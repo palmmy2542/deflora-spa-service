@@ -4,7 +4,7 @@ steps:
       [
         "build",
         "-t",
-        "us-central1-docker.pkg.dev/$PROJECT_ID/deflora-spa-servic/deflora-spa-servic:$COMMIT_SHA",
+        "us-central1-docker.pkg.dev/$PROJECT_ID/deflora-spa-service/deflora-spa-service:$COMMIT_SHA",
         ".",
       ]
 
@@ -12,7 +12,7 @@ steps:
     args:
       [
         "push",
-        "us-central1-docker.pkg.dev/$PROJECT_ID/deflora-spa-servic/deflora-spa-servic:$COMMIT_SHA",
+        "us-central1-docker.pkg.dev/$PROJECT_ID/deflora-spa-service/deflora-spa-service:$COMMIT_SHA",
       ]
 
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
@@ -20,8 +20,8 @@ steps:
     args:
       - run
       - deploy
-      - deflora-spa-servic
-      - --image=us-central1-docker.pkg.dev/$PROJECT_ID/deflora-spa-servic/deflora-spa-servic:$COMMIT_SHA
+      - deflora-spa-service
+      - --image=us-central1-docker.pkg.dev/$PROJECT_ID/deflora-spa-service/deflora-spa-service:$COMMIT_SHA
       - --region=us-central1
       - --platform=managed
       - --allow-unauthenticated
@@ -30,7 +30,7 @@ steps:
       - --set-env-vars=PORT=8080,FIREBASE_PROJECT_ID=defloraspa-c018d,ALLOWED_ORIGINS=https://deflora-spa-backoffice.vercel.app,https://deflora-spa-booking.vercel.app
 
 images:
-  - "us-central1-docker.pkg.dev/$PROJECT_ID/deflora-spa-servic/deflora-spa-servic:$COMMIT_SHA"
+  - "us-central1-docker.pkg.dev/$PROJECT_ID/deflora-spa-service/deflora-spa-service:$COMMIT_SHA"
 
 options:
   logging: CLOUD_LOGGING_ONLY # ✅ fixes the error
