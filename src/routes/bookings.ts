@@ -1,16 +1,14 @@
 import { Router } from "express";
+import { Resend } from "resend";
+import { config } from "../config/config.js";
 import { db, FieldValue, Timestamp } from "../config/firebase.js";
+import { requireRole } from "../middleware/auth.js";
+import { generateEmail, sendEmail } from "../services/emailService.js";
+import { computeTotals, snapshotPrograms } from "../utils/calc.js";
 import {
   BookingCreateSchema,
   BookingUpdateDetailsSchema,
 } from "../validators/schemas.js";
-import { requireRole } from "../middleware/auth.js";
-import { snapshotPrograms, computeTotals } from "../utils/calc.js";
-import { Resend } from "resend";
-import { config } from "../config/config.js";
-import Handlebars from "handlebars";
-import fs from "fs";
-import path from "path";
 
 const router = Router();
 const col = db.collection("bookings");
@@ -78,35 +76,22 @@ router.post(
 
       const snap = await doc.get();
       res.status(201).json({ id: doc.id, ...snap.data() });
-
       const resend = new Resend(config.resend.apiKey);
-      Handlebars.registerHelper("addOne", function (value: number) {
-        return value + 1;
+      const compileTemplate = await generateEmail("booking-pending.hbs", {
+        name: body.contact.name,
+        companyName: "Deflora spa",
+        date: new Date(body.arrivalAt).toLocaleDateString(),
+        guests: body.items.map((it) => ({
+          name: it.personName,
+          programs: it.programs.map((p) => p.nameSnapshot),
+        })),
+        year: new Date().getFullYear(),
       });
-      const distTemplates = path.join(__dirname, "email-templates");
-      const srcTemplates = path.join(process.cwd(), "email-templates");
-
-      const viewsPath = fs.existsSync(distTemplates)
-        ? distTemplates
-        : srcTemplates;
-      const filePath = path.join(viewsPath, "booking-pending.hbs");
-      const template = fs.readFileSync(filePath, "utf8");
-      const compileTemplate = Handlebars.compile(template);
-      await resend.emails.send({
-        from: "Deflora <support@defloraspa.com>",
-        to: ["palmch2542@gmail.com"],
-        subject: "Spa appointment pending",
-        html: compileTemplate({
-          name: body.contact.name,
-          companyName: "Deflora spa",
-          date: new Date(body.arrivalAt).toLocaleDateString(),
-          guests: body.items.map((it) => ({
-            name: it.personName,
-            programs: it.programs.map((p) => p.nameSnapshot),
-          })),
-          year: new Date().getFullYear(),
-        }),
-      });
+      await sendEmail(
+        body.contact.email,
+        "Spa appointment pending",
+        compileTemplate
+      );
     } catch (e) {
       next(e);
     }

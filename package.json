@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx --watch src/index.ts",
     "start": "node dist/index.js",
-    "build": "tsc",
+    "build": "tsc && cp -r src/email-templates dist/email-templates",
     "type-check": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
