@@ -27,15 +27,16 @@ export async function sendEmail(
   subject: string,
   html: string
 ): Promise<void> {
+  console.log(`emailService: ${to} ${subject}`);
   const result = await resend.emails.send({
     from: "Deflora <onboarding@resend.dev>",
     to,
     subject,
     html,
   });
-  console.log(`emailService: ${to} ${subject}`);
   if (result.error) {
     console.log(result.error);
+    throw result.error;
   } else {
     console.log(result);
   }

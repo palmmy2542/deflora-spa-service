@@ -76,7 +76,6 @@ router.post(
 
       const snap = await doc.get();
       res.status(201).json({ id: doc.id, ...snap.data() });
-      const resend = new Resend(config.resend.apiKey);
       const compileTemplate = await generateEmail("booking-pending.hbs", {
         name: body.contact.name,
         companyName: "Deflora spa",
@@ -234,6 +233,23 @@ router.post(
         });
       });
       const fresh = await ref.get();
+      const compileTemplate = await generateEmail("booking-confirmed.hbs", {
+        name: fresh.data()?.contact?.name,
+        companyName: "Deflora spa",
+        date: new Date(fresh.data()?.arrivalAt?.toDate()).toLocaleDateString(),
+        guests: fresh
+          .data()
+          ?.items.map((it: { personName: any; programs: any[] }) => ({
+            name: it.personName,
+            programs: it.programs.map((p) => p.nameSnapshot),
+          })),
+        year: new Date().getFullYear(),
+      });
+      await sendEmail(
+        fresh.data()?.contact?.email,
+        `Spa appointment confirmed Booking ID: ${fresh.id}`,
+        compileTemplate
+      );
       res.json({ id: fresh.id, ...fresh.data() });
     } catch (e) {
       next(e);
@@ -258,6 +274,23 @@ router.post(
         });
       });
       const fresh = await ref.get();
+      const compileTemplate = await generateEmail("booking-canceled.hbs", {
+        name: fresh.data()?.contact?.name,
+        companyName: "Deflora spa",
+        date: new Date(fresh.data()?.arrivalAt?.toDate()).toLocaleDateString(),
+        guests: fresh
+          .data()
+          ?.items.map((it: { personName: any; programs: any[] }) => ({
+            name: it.personName,
+            programs: it.programs.map((p) => p.nameSnapshot),
+          })),
+        year: new Date().getFullYear(),
+      });
+      await sendEmail(
+        fresh.data()?.contact?.email,
+        `Spa appointment canceled Booking ID: ${fresh.id}`,
+        compileTemplate
+      );
       res.json({ id: fresh.id, ...fresh.data() });
     } catch (e) {
       next(e);
