@@ -38,7 +38,7 @@ steps:
       - "run"
       - "services"
       - "update"
-      - "dev-${_IMAGE_NAME}"
+      - "${_IMAGE_NAME}"
       - "--region=asia-southeast1"
       - "--update-env-vars=COMMIT_SHA=$COMMIT_SHA"
 timeout: 1000s
