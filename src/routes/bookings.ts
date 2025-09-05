@@ -83,12 +83,13 @@ router.post(
       Handlebars.registerHelper("addOne", function (value: number) {
         return value + 1;
       });
-      const filePath = path.join(
-        process.cwd(),
-        "src",
-        "email-templates",
-        "booking-pending.hbs"
-      );
+      const distTemplates = path.join(__dirname, "email-templates");
+      const srcTemplates = path.join(process.cwd(), "email-templates");
+
+      const viewsPath = fs.existsSync(distTemplates)
+        ? distTemplates
+        : srcTemplates;
+      const filePath = path.join(viewsPath, "booking-pending.hbs");
       const template = fs.readFileSync(filePath, "utf8");
       const compileTemplate = Handlebars.compile(template);
       await resend.emails.send({
