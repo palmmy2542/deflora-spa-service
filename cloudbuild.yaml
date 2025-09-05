@@ -1,5 +1,4 @@
 steps:
-  # 1. Build Docker image
   - name: "gcr.io/cloud-builders/docker"
     args:
       [
@@ -9,7 +8,6 @@ steps:
         ".",
       ]
 
-  # 2. Push image
   - name: "gcr.io/cloud-builders/docker"
     args:
       [
@@ -17,7 +15,6 @@ steps:
         "us-central1-docker.pkg.dev/$PROJECT_ID/backend-api/backend-api:$COMMIT_SHA",
       ]
 
-  # 3. Deploy to Cloud Run
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     entrypoint: gcloud
     args:
@@ -30,9 +27,12 @@ steps:
       - --allow-unauthenticated
       - --update-secrets=GOOGLE_APPLICATION_CREDENTIALS=firebase-cred:latest
       - --update-secrets=RESEND_API_KEY=resend-api-key:latest
-      - --set-env-vars=PORT=8080
-      - --set-env-vars=FIREBASE_PROJECT_ID=efloraspa-c018d
-      - --set-env-vars=ALLOWED_ORIGINS=https://deflora-spa-backoffice.vercel.app,https://deflora-spa-booking.vercel.app
+      - --set-env-vars=PORT=8080,FIREBASE_PROJECT_ID=my-firebase-project,ALLOWED_ORIGINS=https://myfrontend.com
 
 images:
   - "us-central1-docker.pkg.dev/$PROJECT_ID/backend-api/backend-api:$COMMIT_SHA"
+
+options:
+  logging: CLOUD_LOGGING_ONLY # ✅ fixes the error
+  # OR use this if you want logs in GCS
+  # defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
