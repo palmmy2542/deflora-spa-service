@@ -50,7 +50,6 @@ steps:
       - --set-env-vars=COMMIT_SHA=$COMMIT_SHA
       - --update-secrets=GOOGLE_APPLICATION_CREDENTIALS=firebase-cred:latest
       - --update-secrets=RESEND_API_KEY=resend-api-key:latest
-      - --set-env-vars=PORT=8080
       - --set-env-vars=FIREBASE_PROJECT_ID=my-firebase-project
       - --set-env-vars=ALLOWED_ORIGINS=https://myfrontend.com
 
