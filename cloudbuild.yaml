@@ -48,7 +48,11 @@ steps:
       - --region=${_REGION}
       - --platform=managed
       - --set-env-vars=COMMIT_SHA=$COMMIT_SHA
-      # add flags like --allow-unauthenticated or --service-account if you need them
+      - --update-secrets=GOOGLE_APPLICATION_CREDENTIALS=firebase-cred:latest
+      - --update-secrets=RESEND_API_KEY=resend-api-key:latest
+      - --set-env-vars=PORT=8080
+      - --set-env-vars=FIREBASE_PROJECT_ID=my-firebase-project
+      - --set-env-vars=ALLOWED_ORIGINS=https://myfrontend.com
 
 timeout: 1000s
 
@@ -60,8 +64,3 @@ substitutions:
   _IMAGE_NAME: deflora-spa-service
   _SANITIZED_BRANCH_NAME: '${BRANCH_NAME//\//-}'
   _REGION: asia-southeast1
-
-availableSecrets:
-  secretManager:
-    - versionName: projects/$PROJECT_ID/secrets/resend-api-key/versions/latest
-      env: resend-api-key
