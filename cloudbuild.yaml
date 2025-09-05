@@ -51,10 +51,8 @@ steps:
       - --image=gcr.io/$PROJECT_ID/${_IMAGE_NAME}:$SHORT_SHA
       - --region=${_REGION}
       - --platform=managed
-      # Use SHORT_SHA for COMMIT_SHA; $COMMIT_SHA wasn't defined
-      - --set-env-vars=COMMIT_SHA=$SHORT_SHA
+      - --set-env-vars=COMMIT_SHA=$COMMIT_SHA
       - --set-env-vars=FIREBASE_PROJECT_ID=${_FIREBASE_PROJECT_ID}
-      # Escape the comma so gcloud treats it as part of the value, not a separator
       - --set-env-vars=ALLOWED_ORIGINS=${_ALLOWED_ORIGINS}
       - --set-secrets=RESEND_API_KEY=${_RESEND_API_KEY}
 
@@ -71,6 +69,5 @@ substitutions:
 
   # Environment variables
   _FIREBASE_PROJECT_ID: "defloraspa-c018d"
-  # Escape the comma here so it reaches gcloud properly
-  _ALLOWED_ORIGINS: 'https://deflora-spa-backoffice.vercel.app\,https://deflora-spa-booking.vercel.app'
+  _ALLOWED_ORIGINS: "https://deflora-spa-backoffice.vercel.app;https://deflora-spa-booking.vercel.app"
   _RESEND_API_KEY: "resend-api-key:latest"
