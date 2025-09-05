@@ -16,6 +16,12 @@ export async function snapshotPrograms(programIds: string[]) {
   snaps.forEach((s, idx) => {
     if (s.exists) {
       const d = s.data() as any;
+      if (!programIds[idx]) {
+        console.error(
+          `snapshotPrograms: Program ID ${programIds[idx]} not found`
+        );
+        return;
+      }
       map.set(programIds[idx], {
         name: d.name,
         durationMinutes: d.durationMinutes,

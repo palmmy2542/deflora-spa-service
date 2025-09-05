@@ -1,10 +1,11 @@
 import admin from "firebase-admin";
-import { config } from "./config";
+import { config } from "./config.js";
+import type { Auth } from "firebase-admin/auth";
 
 if (!admin.apps.length) {
   admin.initializeApp({
-    projectId: config.firebase.projectId,
     credential: admin.credential.applicationDefault(),
+    projectId: config.firebase.projectId ?? "",
   });
 }
 
@@ -12,4 +13,4 @@ export const db = admin.firestore();
 export const FieldValue = admin.firestore.FieldValue;
 export const Timestamp = admin.firestore.Timestamp;
 
-export const authAdmin = admin.auth();
+export const authAdmin: Auth = admin.auth();
