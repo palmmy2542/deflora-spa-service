@@ -1,10 +1,28 @@
-FROM node:20-alpine
-
+# Stage 1: Build
+FROM node:20 AS builder
 WORKDIR /usr/src/app
+
+# Install dependencies
 COPY package*.json ./
-RUN yarn install --production
+RUN yarn install --frozen-lockfile
+
+# Copy source
 COPY . .
 
+# Build TypeScript -> dist/
+RUN yarn build   # this should run tsc
+
+# Stage 2: Runtime
+FROM node:20
+WORKDIR /usr/src/app
+
+# Copy only necessary files from builder
+COPY --from=builder /usr/src/app/package*.json ./
+COPY --from=builder /usr/src/app/dist ./dist
+RUN yarn install --production --frozen-lockfile
+
+# Expose Cloud Run port
 EXPOSE 8080
-CMD ["yarn", "build"]
-CMD ["yarn", "start"]
+
+# Start app
+CMD ["node", "dist/index.js"]
