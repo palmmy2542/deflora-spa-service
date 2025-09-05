@@ -1,0 +1,38 @@
+steps:
+  # 1. Build Docker image
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "build",
+        "-t",
+        "us-central1-docker.pkg.dev/$PROJECT_ID/backend-api/backend-api:$COMMIT_SHA",
+        ".",
+      ]
+
+  # 2. Push image
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "push",
+        "us-central1-docker.pkg.dev/$PROJECT_ID/backend-api/backend-api:$COMMIT_SHA",
+      ]
+
+  # 3. Deploy to Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - backend-api
+      - --image=us-central1-docker.pkg.dev/$PROJECT_ID/backend-api/backend-api:$COMMIT_SHA
+      - --region=us-central1
+      - --platform=managed
+      - --allow-unauthenticated
+      - --update-secrets=GOOGLE_APPLICATION_CREDENTIALS=firebase-cred:latest
+      - --update-secrets=RESEND_API_KEY=resend-api-key:latest
+      - --set-env-vars=PORT=8080
+      - --set-env-vars=FIREBASE_PROJECT_ID=efloraspa-c018d
+      - --set-env-vars=ALLOWED_ORIGINS=https://deflora-spa-backoffice.vercel.app,https://deflora-spa-booking.vercel.app
+
+images:
+  - "us-central1-docker.pkg.dev/$PROJECT_ID/backend-api/backend-api:$COMMIT_SHA"

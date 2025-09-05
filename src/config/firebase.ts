@@ -4,7 +4,7 @@ import { config } from "./config";
 if (!admin.apps.length) {
   admin.initializeApp({
     projectId: config.firebase.projectId,
-    credential: admin.credential.cert(config.firebase.credential ?? ""),
+    credential: admin.credential.applicationDefault(),
   });
 }
 
