@@ -1,15 +1,17 @@
-import express from "express";
-import programsRouter from "./routes/programs.js";
-import bookingsRouter from "./routes/bookings.js";
 import cors from "cors";
+import express from "express";
+
+import { config } from "./config/config.js";
+import bookingsRouter from "./routes/bookings.js";
+import programsRouter from "./routes/programs.js";
+
 const app = express();
-const port = 3000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use("/api/v1/programs", programsRouter);
 app.use("/api/v1/bookings", bookingsRouter);
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
+app.listen(config.port, () => {
+  console.log(`Listening on http://localhost:${config.port.toString()}`);
 });
