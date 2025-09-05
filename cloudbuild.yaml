@@ -48,8 +48,8 @@ steps:
       - --region=${_REGION}
       - --platform=managed
       - --set-env-vars=COMMIT_SHA=$COMMIT_SHA
-      - --set-env-vars=FIREBASE_PROJECT_ID=my-firebase-project
-      - --set-env-vars=ALLOWED_ORIGINS=https://myfrontend.com
+      - --set-env-vars=FIREBASE_PROJECT_ID=defloraspa-c018d
+      - --set-env-vars=ALLOWED_ORIGINS=https://deflora-spa-backoffice.vercel.app,https://deflora-spa-booking.vercel.app
       - --update-secrets=RESEND_API_KEY=resend-api-key:latest
 
 timeout: 1000s
