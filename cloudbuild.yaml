@@ -52,11 +52,11 @@ steps:
       - --region=${_REGION}
       - --platform=managed
       - --set-env-vars=COMMIT_SHA=$COMMIT_SHA
-      - --set-env-vars=FIREBASE_PROJECT_ID=defloraspa-c018d
+      - --set-env-vars=FIREBASE_PROJECT_ID=${_FIREBASE_PROJECT_ID}
       # QUOTED properly so Cloud Run parses the comma-separated value
-      - "--set-env-vars=ALLOWED_ORIGINS=https://deflora-spa-backoffice.vercel.app,https://deflora-spa-booking.vercel.app"
+      - --set-env-vars=ALLOWED_ORIGINS=${_ALLOWED_ORIGINS}
       # Use Cloud Run secret integration
-      - --set-secrets=RESEND_API_KEY=resend-api-key:latest
+      - --set-secrets=RESEND_API_KEY=${_RESEND_API_KEY}
 
 timeout: 1000s
 
@@ -68,3 +68,9 @@ substitutions:
   _IMAGE_NAME: deflora-spa-service
   _SANITIZED_BRANCH_NAME: '${BRANCH_NAME//\//-}'
   _REGION: asia-southeast1
+
+  # Environment variables
+  _COMMIT_SHA: "COMMIT_SHA"
+  _FIREBASE_PROJECT_ID: "defloraspa-c018d"
+  _ALLOWED_ORIGINS: "https://deflora-spa-backoffice.vercel.app,https://deflora-spa-booking.vercel.app"
+  _RESEND_API_KEY: "resend-api-key:latest"
