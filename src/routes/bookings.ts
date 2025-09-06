@@ -1,10 +1,12 @@
 import { Router } from "express";
-import { Resend } from "resend";
-import { config } from "../config/config.js";
 import { db, FieldValue, Timestamp } from "../config/firebase.js";
 import { requireRole } from "../middleware/auth.js";
 import { generateEmail, sendEmail } from "../services/emailService.js";
-import { computeTotals, snapshotPrograms } from "../utils/calc.js";
+import {
+  computeTotals,
+  snapshotPackages,
+  snapshotPrograms,
+} from "../utils/calc.js";
 import {
   BookingCreateSchema,
   BookingUpdateDetailsSchema,
@@ -34,16 +36,20 @@ router.post(
     try {
       const body = BookingCreateSchema.parse(req.body);
 
-      // Snapshot program data & compute totals
       const allProgramIds = new Set<string>();
       for (const it of body.items)
         for (const p of it.programs) allProgramIds.add(p.programId);
-      const snapshot = await snapshotPrograms([...allProgramIds]);
+      const snapshotProgramsMap = await snapshotPrograms([...allProgramIds]);
+
+      const allPackageIds = new Set<string>();
+      for (const it of body.items)
+        for (const p of it.packages) allPackageIds.add(p.packageId);
+      const snapshotPackagesMap = await snapshotPackages([...allPackageIds]);
 
       const snapshotItems = body.items.map((it) => ({
         personName: it.personName,
         programs: it.programs.map((p) => {
-          const s = snapshot.get(p.programId);
+          const s = snapshotProgramsMap.get(p.programId);
           if (!s) {
             const e: any = new Error(`Program not found: ${p.programId}`);
             e.statusCode = 400;
@@ -54,6 +60,23 @@ router.post(
             qty: p.qty,
             priceSnapshot: s.price,
             nameSnapshot: s.name,
+            durationSnapshot: s.durationMinutes,
+            currencySnapshot: s.currency,
+          };
+        }),
+        packages: it.packages.map((p) => {
+          const s = snapshotPackagesMap.get(p.packageId);
+          if (!s) {
+            const e: any = new Error(`Package not found: ${p.packageId}`);
+            e.statusCode = 400;
+            throw e;
+          }
+          return {
+            packageId: p.packageId,
+            priceSnapshot: s.packagePrice,
+            nameSnapshot: s.name,
+            originalPriceSnapshot: s.originalPrice,
+            numberOfPeopleSnapshot: s.numberOfPeople,
             durationSnapshot: s.durationMinutes,
             currencySnapshot: s.currency,
           };
@@ -125,7 +148,6 @@ router.get("/", requireRole(["admin", "staff"]), async (req, res, next) => {
 
 router.get("/:id", requireRole(["admin", "staff"]), async (req, res, next) => {
   try {
-    console.log(req.params.id);
     const d = await col.doc(req.params.id).get();
     if (!d.exists) return res.status(404).json({ error: "Booking not found" });
     res.json({
@@ -160,17 +182,27 @@ router.patch(
 
         let items = data.items;
         let arrivalAt = data.arrivalAt;
+        console.debug("Updates:", updates);
 
         if (updates.items) {
-          // resnapshot programs for new items
-          const ids = new Set<string>();
+          const allProgramIds = new Set<string>();
           for (const it of updates.items)
-            for (const p of it.programs) ids.add(p.programId);
-          const snapshot = await snapshotPrograms([...ids]);
+            for (const p of it.programs) allProgramIds.add(p.programId);
+          const snapshotProgramsMap = await snapshotPrograms([
+            ...allProgramIds,
+          ]);
+
+          const allPackageIds = new Set<string>();
+          for (const it of updates.items)
+            for (const p of it.packages) allPackageIds.add(p.packageId);
+          const snapshotPackagesMap = await snapshotPackages([
+            ...allPackageIds,
+          ]);
+
           items = updates.items.map((it) => ({
             personName: it.personName,
             programs: it.programs.map((p) => {
-              const s = snapshot.get(p.programId);
+              const s = snapshotProgramsMap.get(p.programId);
               if (!s) {
                 const e: any = new Error(`Program not found: ${p.programId}`);
                 e.statusCode = 400;
@@ -185,7 +217,26 @@ router.patch(
                 currencySnapshot: s.currency,
               };
             }),
+            packages: it.packages.map((p) => {
+              const s = snapshotPackagesMap.get(p.packageId);
+              console.log("test", p);
+              if (!s) {
+                const e: any = new Error(`Package not found: ${p.packageId}`);
+                e.statusCode = 400;
+                throw e;
+              }
+              return {
+                packageId: p.packageId,
+                priceSnapshot: s.packagePrice,
+                nameSnapshot: s.name,
+                originalPriceSnapshot: s.originalPrice,
+                numberOfPeopleSnapshot: s.numberOfPeople,
+                durationSnapshot: s.durationMinutes,
+                currencySnapshot: s.currency,
+              };
+            }),
           }));
+          console.debug("Updated items:", items);
         }
 
         if (updates.arrivalAt) {
@@ -219,13 +270,10 @@ router.post(
   async (req: any, res, next) => {
     try {
       const ref = col.doc(req.params.id);
-      console.log(ref);
       await db.runTransaction(async (trx) => {
         const snap = await trx.get(ref);
-        console.log(snap);
         if (!snap.exists) throw new Error("Booking not found");
         const data = snap.data() as any;
-        console.log(data);
         assertTransition(data.status, "confirmed");
         trx.update(ref, {
           status: "confirmed",
