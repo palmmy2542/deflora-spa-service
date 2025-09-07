@@ -55,6 +55,9 @@ steps:
       - --set-env-vars=FIREBASE_PROJECT_ID=${_FIREBASE_PROJECT_ID}
       - --set-env-vars=ALLOWED_ORIGINS=${_ALLOWED_ORIGINS}
       - --set-secrets=RESEND_API_KEY=${_RESEND_API_KEY}
+      - --set-env-vars=GOOGLE_CLIENT_EMAIL=${_GOOGLE_CLIENT_EMAIL}
+      - --set-secrets=GOOGLE_PRIVATE_KEY=${_GOOGLE_PRIVATE_KEY}
+      - --set-env-vars=CALENDAR_ID=${_CALENDAR_ID}
 
 timeout: 1000s
 
@@ -71,3 +74,8 @@ substitutions:
   _FIREBASE_PROJECT_ID: "defloraspa-c018d"
   _ALLOWED_ORIGINS: "https://deflora-spa-backoffice.vercel.app;https://deflora-spa-booking.vercel.app"
   _RESEND_API_KEY: "resend-api-key:latest"
+
+  # Google Calendar
+  _GOOGLE_CLIENT_EMAIL: "deflora-spa-calendar@defloraspa-c018d.iam.gserviceaccount.com"
+  _GOOGLE_PRIVATE_KEY: "deflora-spa-calendar-private-key:latest"
+  _CALENDAR_ID: "palmch2542@gmail.com"
