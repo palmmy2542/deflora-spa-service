@@ -13,6 +13,10 @@ import {
 } from "../validators/schemas.js";
 import z from "zod";
 import { FieldPath } from "firebase-admin/firestore";
+import {
+  deleteBookingEvent,
+  upsertBookingEvent,
+} from "../services/bookingCalendar.js";
 
 const router = Router();
 const col = db.collection("bookings");
@@ -111,11 +115,16 @@ router.post(
         })),
         year: new Date().getFullYear(),
       });
-      await sendEmail(
-        body.contact.email,
-        "Spa appointment pending",
-        compileTemplate
-      );
+
+      try {
+        await sendEmail(
+          body.contact.email,
+          "Spa appointment pending",
+          compileTemplate
+        );
+      } catch (e) {
+        console.error(`Error sending email ${e}`);
+      }
     } catch (e) {
       next(e);
     }
@@ -533,6 +542,12 @@ router.patch(
         });
       });
 
+      try {
+        await upsertBookingEvent(ref);
+      } catch (e) {
+        console.error(`Error upsertBookingEvent: ${e}`);
+      }
+
       const fresh = await ref.get();
       res.json({ id: fresh.id, ...fresh.data() });
     } catch (e) {
@@ -557,24 +572,38 @@ router.post(
           updatedAt: FieldValue.serverTimestamp(),
         });
       });
+
       const fresh = await ref.get();
-      const compileTemplate = await generateEmail("booking-confirmed.hbs", {
-        name: fresh.data()?.contact?.name,
+      const data = fresh.data() as any;
+
+      const templateData = {
+        name: data.contact?.name,
         companyName: "Deflora spa",
-        date: new Date(fresh.data()?.arrivalAt?.toDate()).toLocaleDateString(),
-        guests: fresh
-          .data()
-          ?.items.map((it: { personName: any; programs: any[] }) => ({
-            name: it.personName,
-            programs: it.programs.map((p) => p.nameSnapshot),
-          })),
+        date: new Date(data.arrivalAt.toDate()).toLocaleDateString(),
+        guests: data.items.map((it: { personName: any; programs: any[] }) => ({
+          name: it.personName,
+          programs: it.programs.map((p) => p.nameSnapshot),
+        })),
         year: new Date().getFullYear(),
-      });
-      await sendEmail(
-        fresh.data()?.contact?.email,
-        `Spa appointment confirmed Booking ID: ${fresh.id}`,
-        compileTemplate
+      };
+      const compileTemplate = await generateEmail(
+        "booking-confirmed.hbs",
+        templateData
       );
+      try {
+        await upsertBookingEvent(ref);
+      } catch (e) {
+        console.error(`Error upsertBookingEvent: ${e}`);
+      }
+
+      try {
+        await sendEmail(
+          data.contact?.email,
+          `Spa appointment confirmed Booking ID: ${req.params.id}`,
+          compileTemplate
+        );
+      } catch (error: any) {}
+
       res.json({ id: fresh.id, ...fresh.data() });
     } catch (e) {
       next(e);
@@ -599,23 +628,32 @@ router.post(
         });
       });
       const fresh = await ref.get();
+      const data = fresh.data() as any;
       const compileTemplate = await generateEmail("booking-canceled.hbs", {
-        name: fresh.data()?.contact?.name,
+        name: data?.contact?.name,
         companyName: "Deflora spa",
-        date: new Date(fresh.data()?.arrivalAt?.toDate()).toLocaleDateString(),
-        guests: fresh
-          .data()
-          ?.items.map((it: { personName: any; programs: any[] }) => ({
-            name: it.personName,
-            programs: it.programs.map((p) => p.nameSnapshot),
-          })),
+        date: new Date(data?.arrivalAt?.toDate()).toLocaleDateString(),
+        guests: data.items.map((it: { personName: any; programs: any[] }) => ({
+          name: it.personName,
+          programs: it.programs.map((p) => p.nameSnapshot),
+        })),
         year: new Date().getFullYear(),
       });
-      await sendEmail(
-        fresh.data()?.contact?.email,
-        `Spa appointment canceled Booking ID: ${fresh.id}`,
-        compileTemplate
-      );
+
+      try {
+        await deleteBookingEvent(ref);
+      } catch (e) {
+        console.error(`Error deleteBookingEvent: ${e}`);
+      }
+
+      try {
+        await sendEmail(
+          data?.contact?.email,
+          `Spa appointment canceled Booking ID: ${req.params.id}`,
+          compileTemplate
+        );
+      } catch (error: any) {}
+
       res.json({ id: fresh.id, ...fresh.data() });
     } catch (e) {
       next(e);
