@@ -9,7 +9,7 @@ type Booking = {
     personName: string;
     programs: Array<{
       nameSnapshot: string;
-      durationSnapshot?: number;
+      durationSnapshot?: number; // minutes
     }>;
   }>;
 };
@@ -17,14 +17,20 @@ type Booking = {
 const TZ = "Asia/Bangkok";
 const CALENDAR_ID = process.env.CALENDAR_ID!;
 
+function toISOUTC(dateLike: any) {
+  const d =
+    dateLike?.toDate?.() ??
+    (typeof dateLike === "string" ? new Date(dateLike) : new Date(dateLike));
+  return d.toISOString();
+}
+
 function computeEndISO(booking: Booking) {
   // end = arrivalAt + longest total duration among guests
   const start =
-    (booking.arrivalAt instanceof FirebaseFirestore.Timestamp
-      ? booking.arrivalAt.toDate()
-      : booking.arrivalAt instanceof Date
-      ? booking.arrivalAt
-      : new Date(booking.arrivalAt)) ?? new Date();
+    booking.arrivalAt?.toDate?.() ??
+    (typeof booking.arrivalAt === "string"
+      ? new Date(booking.arrivalAt)
+      : new Date(booking.arrivalAt));
   const longestMinutes = Math.max(
     0,
     ...booking.items.map((it) =>
@@ -64,7 +70,6 @@ export async function upsertBookingEvent(
     description,
     start: { dateTime: startISO, timeZone: TZ },
     end: { dateTime: endISO, timeZone: TZ },
-    // attendees,
     reminders: {
       useDefault: false,
       overrides: [
