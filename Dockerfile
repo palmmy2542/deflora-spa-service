@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM node:20 AS builder
+FROM node:22 AS builder
 WORKDIR /usr/src/app
 
 # Install dependencies
@@ -13,7 +13,7 @@ COPY . .
 RUN yarn build   # this should run tsc
 
 # Stage 2: Runtime
-FROM node:20
+FROM node:22
 WORKDIR /usr/src/app
 
 # Copy only necessary files from builder
