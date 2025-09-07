@@ -3,7 +3,7 @@ import { calendar } from "./googleCalendar.js";
 
 type Booking = {
   id: string;
-  arrivalAt: FirebaseFirestore.Timestamp | Date | string;
+  arrivalAt: FirebaseFirestore.Timestamp;
   contact?: { name?: string; email?: string; phone?: string };
   items: Array<{
     personName: string;
@@ -26,11 +26,12 @@ function toISOUTC(dateLike: any) {
 
 function computeEndISO(booking: Booking) {
   // end = arrivalAt + longest total duration among guests
-  const start =
+  const start = new Date(
     booking.arrivalAt?.toDate?.() ??
-    (typeof booking.arrivalAt === "string"
-      ? new Date(booking.arrivalAt)
-      : new Date(booking.arrivalAt));
+      (typeof booking.arrivalAt === "string"
+        ? booking.arrivalAt
+        : booking.arrivalAt.toMillis())
+  );
   const longestMinutes = Math.max(
     0,
     ...booking.items.map((it) =>
