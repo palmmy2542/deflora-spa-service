@@ -30,15 +30,18 @@ export const PackageSchema = z.object({
 });
 export type PackageInput = z.infer<typeof PackageSchema>;
 
-/** ===== Booking (support packages + extra programs) ===== */
-/** Client sends ids/qty; snapshots are optional and filled on server */
-const BookingProgramSelectionSchema = z.object({
+/** ===== Program/Package selections with duration choice ===== **/
+
+export const BookingProgramSelectionSchema = z.object({
   programId: z.string().min(1),
+  selectedDurationMinutes: z.number().int().positive(),
   qty: z.number().int().positive().default(1),
-  priceSnapshot: z.number().nonnegative().optional(),
-  nameSnapshot: z.string().optional(),
-  durationSnapshot: z.number().int().positive().optional(),
-  currencySnapshot: z.string().optional(),
+
+  // optional snapshots (server may populate to freeze pricing/names at booking time)
+  priceSnapshot: z.number().nonnegative(),
+  nameSnapshot: z.string(),
+  durationSnapshot: z.number().int().positive(), // may mirror selectedDurationMinutes
+  currencySnapshot: z.string(),
 });
 
 const BookingPackageSelectionSchema = z.object({
@@ -51,10 +54,9 @@ const BookingPackageSelectionSchema = z.object({
   currencySnapshot: z.string().optional(),
 });
 
-const BookingItemSchema = z
+export const BookingItemSchema = z
   .object({
     personName: z.string().min(1),
-    // allow both packages and programs; user may pick any combination
     programs: z.array(BookingProgramSelectionSchema).default([]),
     packages: z.array(BookingPackageSelectionSchema).default([]),
   })
@@ -89,6 +91,14 @@ export const BookingUpdateDetailsSchema = z.object({
 
 export type BookingCreateInput = z.infer<typeof BookingCreateSchema>;
 export type BookingUpdateInput = z.infer<typeof BookingUpdateDetailsSchema>;
+
+export type BookingItemInput = z.infer<typeof BookingItemSchema>;
+export type BookingProgramSelectionInput = z.infer<
+  typeof BookingProgramSelectionSchema
+>;
+export type BookingPackageSelectionInput = z.infer<
+  typeof BookingPackageSelectionSchema
+>;
 
 /** ===== Analytics (unchanged) ===== */
 export const AnalyticsQuerySchema = z.object({

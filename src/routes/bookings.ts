@@ -64,9 +64,9 @@ router.post(
           return {
             programId: p.programId,
             qty: p.qty,
-            priceSnapshot: s.price,
+            priceSnapshot: p.priceSnapshot,
             nameSnapshot: s.name,
-            durationSnapshot: s.durationMinutes,
+            durationSnapshot: p.selectedDurationMinutes,
             currencySnapshot: s.currency,
           };
         }),
