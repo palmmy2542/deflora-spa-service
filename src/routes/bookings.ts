@@ -1,6 +1,12 @@
 import { Router } from "express";
+import { FieldPath } from "firebase-admin/firestore";
+import z from "zod";
 import { db, FieldValue, Timestamp } from "../config/firebase.js";
 import { requireRole } from "../middleware/auth.js";
+import {
+  deleteBookingEvent,
+  upsertBookingEvent,
+} from "../services/bookingCalendar.js";
 import { generateEmail, sendEmail } from "../services/emailService.js";
 import {
   computeTotals,
@@ -11,12 +17,6 @@ import {
   BookingCreateSchema,
   BookingUpdateDetailsSchema,
 } from "../validators/schemas.js";
-import z from "zod";
-import { FieldPath } from "firebase-admin/firestore";
-import {
-  deleteBookingEvent,
-  upsertBookingEvent,
-} from "../services/bookingCalendar.js";
 
 const router = Router();
 const col = db.collection("bookings");
@@ -42,11 +42,6 @@ router.post(
     try {
       const body = BookingCreateSchema.parse(req.body);
 
-      const allProgramIds = new Set<string>();
-      for (const it of body.items)
-        for (const p of it.programs) allProgramIds.add(p.programId);
-      const snapshotProgramsMap = await snapshotPrograms([...allProgramIds]);
-
       const allPackageIds = new Set<string>();
       for (const it of body.items)
         for (const p of it.packages) allPackageIds.add(p.packageId);
@@ -55,19 +50,13 @@ router.post(
       const snapshotItems = body.items.map((it) => ({
         personName: it.personName,
         programs: it.programs.map((p) => {
-          const s = snapshotProgramsMap.get(p.programId);
-          if (!s) {
-            const e: any = new Error(`Program not found: ${p.programId}`);
-            e.statusCode = 400;
-            throw e;
-          }
           return {
             programId: p.programId,
             qty: p.qty,
             priceSnapshot: p.priceSnapshot,
-            nameSnapshot: s.name,
-            durationSnapshot: p.selectedDurationMinutes,
-            currencySnapshot: s.currency,
+            nameSnapshot: p.nameSnapshot,
+            durationSnapshot: p.durationSnapshot,
+            currencySnapshot: p.currencySnapshot,
           };
         }),
         packages: it.packages.map((p) => {
@@ -469,7 +458,6 @@ router.patch(
 
         let items = data.items;
         let arrivalAt = data.arrivalAt;
-        console.debug("Updates:", updates);
 
         if (updates.items) {
           const allProgramIds = new Set<string>();
@@ -489,19 +477,13 @@ router.patch(
           items = updates.items.map((it) => ({
             personName: it.personName,
             programs: it.programs.map((p) => {
-              const s = snapshotProgramsMap.get(p.programId);
-              if (!s) {
-                const e: any = new Error(`Program not found: ${p.programId}`);
-                e.statusCode = 400;
-                throw e;
-              }
               return {
                 programId: p.programId,
                 qty: p.qty,
-                priceSnapshot: s.price,
-                nameSnapshot: s.name,
-                durationSnapshot: s.durationMinutes,
-                currencySnapshot: s.currency,
+                priceSnapshot: p.priceSnapshot,
+                nameSnapshot: p.nameSnapshot,
+                durationSnapshot: p.durationSnapshot,
+                currencySnapshot: p.currencySnapshot,
               };
             }),
             packages: it.packages.map((p) => {

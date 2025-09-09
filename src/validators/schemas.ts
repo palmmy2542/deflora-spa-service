@@ -34,10 +34,10 @@ export type PackageInput = z.infer<typeof PackageSchema>;
 
 export const BookingProgramSelectionSchema = z.object({
   programId: z.string().min(1),
-  selectedDurationMinutes: z.number().int().positive(),
   qty: z.number().int().positive().default(1),
 
   // optional snapshots (server may populate to freeze pricing/names at booking time)
+  durationSnapshot: z.number().int().positive(),
   priceSnapshot: z.number().nonnegative(),
   nameSnapshot: z.string().optional(),
   currencySnapshot: z.string().optional(),
