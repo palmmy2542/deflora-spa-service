@@ -19,16 +19,3 @@ export async function authenticate(
     return res.status(401).json({ error: "Invalid or expired token" });
   }
 }
-
-type Role = "admin" | "staff" | "viewer";
-
-export function requireRole(roles: Role[]) {
-  return (req: any, res: any, next: any) => {
-    const claims = req.user ?? {};
-    const role: Role | undefined = claims.role;
-    // if (!role || !roles.includes(role)) {
-    //   return res.status(403).json({ error: "Forbidden" });
-    // }
-    next();
-  };
-}
