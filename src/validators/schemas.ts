@@ -1,14 +1,21 @@
 import { z } from "zod";
 
-/** ===== Programs (unchanged) ===== */
+/** ===== Programs (with default + options) ===== */
 export const ProgramSchema = z.object({
   name: z.string().min(1),
   description: z.string().default(""),
-  durationMinutes: z.number().int().positive(),
-  price: z.number().nonnegative(),
+  durationOptions: z
+    .array(
+      z.object({
+        durationMinutes: z.number().int().positive(),
+        price: z.number().nonnegative(),
+      })
+    )
+    .optional(),
   currency: z.string().default("THB"),
   isActive: z.boolean().default(true),
 });
+
 export type ProgramInput = z.infer<typeof ProgramSchema>;
 
 export const PackageSchema = z.object({
