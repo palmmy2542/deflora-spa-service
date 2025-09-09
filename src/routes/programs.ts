@@ -31,6 +31,16 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+router.get("/active", async (req, res, next) => {
+  try {
+    const snap = await col.where("isActive", "==", true).orderBy("name").get();
+    const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    res.json(data);
+  } catch (e) {
+    next(e);
+  }
+});
+
 router.get("/:id", async (req, res, next) => {
   try {
     const d = await col.doc(req.params.id).get();
