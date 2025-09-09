@@ -58,6 +58,7 @@ steps:
       - --set-env-vars=GOOGLE_CLIENT_EMAIL=${_GOOGLE_CLIENT_EMAIL}
       - --set-secrets=GOOGLE_PRIVATE_KEY=${_GOOGLE_PRIVATE_KEY}
       - --set-env-vars=CALENDAR_ID=${_CALENDAR_ID}
+      - --set-env-vars=BACKOFFICE_URL=${_BACKOFFICE_URL}
 
 timeout: 1000s
 
@@ -79,3 +80,5 @@ substitutions:
   _GOOGLE_CLIENT_EMAIL: "deflora-spa-calendar@defloraspa-c018d.iam.gserviceaccount.com"
   _GOOGLE_PRIVATE_KEY: "deflora-spa-calendar-private-key:latest"
   _CALENDAR_ID: "palmch2542@gmail.com"
+
+  _BACKOFFICE_URL: "https://deflora-spa-backoffice.vercel.app"
