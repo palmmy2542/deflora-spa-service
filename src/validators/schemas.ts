@@ -11,7 +11,7 @@ export const ProgramSchema = z.object({
         price: z.number().nonnegative(),
       })
     )
-    .optional(),
+    .min(1),
   currency: z.string().default("THB"),
   isActive: z.boolean().default(true),
 });
@@ -39,9 +39,8 @@ export const BookingProgramSelectionSchema = z.object({
 
   // optional snapshots (server may populate to freeze pricing/names at booking time)
   priceSnapshot: z.number().nonnegative(),
-  nameSnapshot: z.string(),
-  durationSnapshot: z.number().int().positive(), // may mirror selectedDurationMinutes
-  currencySnapshot: z.string(),
+  nameSnapshot: z.string().optional(),
+  currencySnapshot: z.string().optional(),
 });
 
 const BookingPackageSelectionSchema = z.object({
