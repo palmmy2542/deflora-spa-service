@@ -35,6 +35,16 @@ packageRouter.get("/", async (_req, res, next) => {
   }
 });
 
+packageRouter.get("/active", async (_req, res, next) => {
+  try {
+    const snap = await col.where("isActive", "==", true).orderBy("name").get();
+    const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    res.json(data);
+  } catch (e) {
+    next(e);
+  }
+});
+
 packageRouter.get("/:id", async (req, res, next) => {
   try {
     const d = await col.doc(req.params.id).get();
