@@ -1,23 +1,5 @@
 import { db } from "../config/firebase.js";
-
-type ProgramDoc = {
-  name: string;
-  durationMinutes: number;
-  price: number;
-  currency: string;
-  isActive: boolean;
-};
-
-type PackageDoc = {
-  name: string;
-  description: string;
-  originalPrice: number;
-  packagePrice: number;
-  numberOfPeople: number;
-  durationMinutes: number;
-  currency: string;
-  isActive?: boolean;
-};
+import type { ProgramDoc, PackageDoc } from "./docTypes.js";
 
 export async function snapshotPrograms(programIds: string[]) {
   if (programIds.length === 0) return new Map<string, ProgramDoc>();
@@ -35,8 +17,7 @@ export async function snapshotPrograms(programIds: string[]) {
       }
       map.set(programIds[idx], {
         name: d.name,
-        durationMinutes: d.durationMinutes,
-        price: d.price,
+        durationOptions: d.durationOptions,
         currency: d.currency ?? "THB",
         isActive: d.isActive ?? true,
       });

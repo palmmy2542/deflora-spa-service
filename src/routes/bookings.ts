@@ -13,8 +13,11 @@ import {
   snapshotPackages,
   snapshotPrograms,
 } from "../utils/calc.js";
+import type { PackageDoc, ProgramDoc } from "../utils/docTypes.js";
 import {
   BookingCreateSchema,
+  BookingPackageSelectionSchema,
+  BookingProgramSelectionSchema,
   BookingUpdateDetailsSchema,
 } from "../validators/schemas.js";
 
@@ -35,12 +38,55 @@ function assertTransition(from: string, to: string) {
   }
 }
 
+function mapItemProgramToSnapshot(
+  item: z.infer<typeof BookingProgramSelectionSchema>,
+  program: ProgramDoc
+) {
+  const durationOption = program.durationOptions.find(
+    (d) => d.durationMinutes === item.durationSnapshot
+  );
+  if (!durationOption) {
+    const e: any = new Error(`Duration not found: ${item.durationSnapshot}`);
+    e.statusCode = 400;
+    throw e;
+  }
+  return {
+    programId: item.programId,
+    qty: item.qty,
+    priceSnapshot: durationOption.price,
+    nameSnapshot: program.name,
+    durationSnapshot: durationOption.durationMinutes,
+    currencySnapshot: program.currency,
+  };
+}
+
+function mapItemPackageToSnapshot(
+  item: z.infer<typeof BookingPackageSelectionSchema>,
+  pkg: PackageDoc
+) {
+  return {
+    packageId: item.packageId,
+    qty: item.qty,
+    priceSnapshot: pkg.packagePrice,
+    nameSnapshot: pkg.name,
+    originalPriceSnapshot: pkg.originalPrice,
+    numberOfPeopleSnapshot: pkg.numberOfPeople,
+    durationSnapshot: pkg.durationMinutes,
+    currencySnapshot: pkg.currency,
+  };
+}
+
 router.post(
   "/",
   requireRole(["admin", "staff", "viewer"]),
   async (req: any, res, next) => {
     try {
       const body = BookingCreateSchema.parse(req.body);
+
+      const allProgramIds = new Set<string>();
+      for (const it of body.items)
+        for (const p of it.programs) allProgramIds.add(p.programId);
+      const snapshotProgramsMap = await snapshotPrograms([...allProgramIds]);
 
       const allPackageIds = new Set<string>();
       for (const it of body.items)
@@ -50,14 +96,13 @@ router.post(
       const snapshotItems = body.items.map((it) => ({
         personName: it.personName,
         programs: it.programs.map((p) => {
-          return {
-            programId: p.programId,
-            qty: p.qty,
-            priceSnapshot: p.priceSnapshot,
-            nameSnapshot: p.nameSnapshot,
-            durationSnapshot: p.durationSnapshot,
-            currencySnapshot: p.currencySnapshot,
-          };
+          const s = snapshotProgramsMap.get(p.programId);
+          if (!s) {
+            const e: any = new Error(`Program not found: ${p.programId}`);
+            e.statusCode = 400;
+            throw e;
+          }
+          return mapItemProgramToSnapshot(p, s);
         }),
         packages: it.packages.map((p) => {
           const s = snapshotPackagesMap.get(p.packageId);
@@ -66,15 +111,7 @@ router.post(
             e.statusCode = 400;
             throw e;
           }
-          return {
-            packageId: p.packageId,
-            priceSnapshot: s.packagePrice,
-            nameSnapshot: s.name,
-            originalPriceSnapshot: s.originalPrice,
-            numberOfPeopleSnapshot: s.numberOfPeople,
-            durationSnapshot: s.durationMinutes,
-            currencySnapshot: s.currency,
-          };
+          return mapItemPackageToSnapshot(p, s);
         }),
       }));
 
@@ -477,14 +514,13 @@ router.patch(
           items = updates.items.map((it) => ({
             personName: it.personName,
             programs: it.programs.map((p) => {
-              return {
-                programId: p.programId,
-                qty: p.qty,
-                priceSnapshot: p.priceSnapshot,
-                nameSnapshot: p.nameSnapshot,
-                durationSnapshot: p.durationSnapshot,
-                currencySnapshot: p.currencySnapshot,
-              };
+              const s = snapshotProgramsMap.get(p.programId);
+              if (!s) {
+                const e: any = new Error(`Program not found: ${p.programId}`);
+                e.statusCode = 400;
+                throw e;
+              }
+              return mapItemProgramToSnapshot(p, s);
             }),
             packages: it.packages.map((p) => {
               const s = snapshotPackagesMap.get(p.packageId);
@@ -493,18 +529,9 @@ router.patch(
                 e.statusCode = 400;
                 throw e;
               }
-              return {
-                packageId: p.packageId,
-                priceSnapshot: s.packagePrice,
-                nameSnapshot: s.name,
-                originalPriceSnapshot: s.originalPrice,
-                numberOfPeopleSnapshot: s.numberOfPeople,
-                durationSnapshot: s.durationMinutes,
-                currencySnapshot: s.currency,
-              };
+              return mapItemPackageToSnapshot(p, s);
             }),
           }));
-          console.debug("Updated items:", items);
         }
 
         if (updates.arrivalAt) {

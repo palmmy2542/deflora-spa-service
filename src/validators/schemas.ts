@@ -37,14 +37,17 @@ export const BookingProgramSelectionSchema = z.object({
   qty: z.number().int().positive().default(1),
 
   // optional snapshots (server may populate to freeze pricing/names at booking time)
-  durationSnapshot: z.number().int().positive(),
-  priceSnapshot: z.number().nonnegative(),
+  durationSnapshot: z.number().int().positive().optional(),
+  priceSnapshot: z.number().nonnegative().optional(),
   nameSnapshot: z.string().optional(),
   currencySnapshot: z.string().optional(),
 });
 
-const BookingPackageSelectionSchema = z.object({
+export const BookingPackageSelectionSchema = z.object({
   packageId: z.string().min(1),
+  qty: z.number().int().positive().default(1),
+
+  // optional snapshots (server may populate to freeze pricing/names at booking time)
   nameSnapshot: z.string().optional(),
   originalPriceSnapshot: z.number().nonnegative().optional(),
   packagePriceSnapshot: z.number().nonnegative().optional(),
