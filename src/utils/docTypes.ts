@@ -15,3 +15,20 @@ export type PackageDoc = {
   currency: string;
   isActive?: boolean;
 };
+
+export type BookingDoc = {
+  id: string;
+  arrivalAt: FirebaseFirestore.Timestamp;
+  contact?: { name?: string; email?: string; phone?: string };
+  items: Array<{
+    personName: string;
+    programs: Array<{
+      nameSnapshot: string;
+      durationSnapshot?: number; // minutes
+    }>;
+    packages: Array<{
+      nameSnapshot: string;
+      durationSnapshot?: number; // minutes
+    }>;
+  }>;
+};

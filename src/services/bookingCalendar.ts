@@ -1,18 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { calendar } from "./googleCalendar.js";
-
-type Booking = {
-  id: string;
-  arrivalAt: FirebaseFirestore.Timestamp;
-  contact?: { name?: string; email?: string; phone?: string };
-  items: Array<{
-    personName: string;
-    programs: Array<{
-      nameSnapshot: string;
-      durationSnapshot?: number; // minutes
-    }>;
-  }>;
-};
+import type { BookingDoc } from "../utils/docTypes.js";
 
 const TZ = "Asia/Bangkok";
 const CALENDAR_ID = process.env.CALENDAR_ID!;
@@ -24,7 +12,7 @@ function toISOUTC(dateLike: any) {
   return d.toISOString();
 }
 
-function computeEndISO(booking: Booking) {
+function computeEndISO(booking: BookingDoc) {
   // end = arrivalAt + longest total duration among guests
   const start = new Date(
     booking.arrivalAt?.toDate?.() ??
@@ -47,17 +35,29 @@ export async function upsertBookingEvent(
 ) {
   const snap = await bookingRef.get();
   if (!snap.exists) throw new Error("Booking not found");
-  const booking = { id: snap.id, ...snap.data() } as unknown as Booking & {
+  const booking = { id: snap.id, ...snap.data() } as unknown as BookingDoc & {
     calendarEventId?: string;
   };
 
   const { startISO, endISO } = computeEndISO(booking);
-  const title = `Spa: ${booking.contact?.name ?? "Guest"} (${
+  const title = `${booking.contact?.name ?? "Guest"} x ${
     booking.items.length
-  } pax)`;
+  } person`;
   const description = [
     `Booking ID: ${booking.id}`,
-    booking.contact?.email ? `Guest Email: ${booking.contact.email}` : "",
+    booking.contact?.email ? `Contact Email: ${booking.contact.email}` : "",
+    "",
+    booking.items.map((item) => {
+      const programs = item.programs
+        .map((p) => `${p.nameSnapshot} | ${p.durationSnapshot ?? 0} min`)
+        .join(", ");
+      const packages = item.packages
+        .map((p) => `${p.nameSnapshot} | ${p.durationSnapshot ?? 0} min`)
+        .join(", ");
+      return `${item.personName}: Programs: ${
+        programs.length > 0 ? programs : "-"
+      }, Packages: ${packages.length > 0 ? packages : "-"}`;
+    }),
     "",
     `[Booking details](${process.env.BACKOFFICE_URL}/bookings/${booking.id})`,
   ]
