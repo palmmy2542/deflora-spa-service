@@ -20,9 +20,10 @@ import {
   BookingProgramSelectionSchema,
   BookingUpdateDetailsSchema,
 } from "../validators/schemas.js";
+import { config } from "../config/config.js";
 
 const router = Router();
-const col = db.collection("bookings");
+const col = db.collection(config.collection.bookings);
 
 // status: pending | confirmed | canceled
 function assertTransition(from: string, to: string) {

@@ -2,9 +2,10 @@ import { Router } from "express";
 import { db, FieldValue } from "../config/firebase.js";
 import { authenticate } from "../middleware/auth.js";
 import { PackageSchema } from "../validators/schemas.js";
+import { config } from "../config/config.js";
 
 const packageRouter = Router();
-const col = db.collection("packages");
+const col = db.collection(config.collection.packages);
 
 packageRouter.post("/", authenticate, async (req, res, next) => {
   try {

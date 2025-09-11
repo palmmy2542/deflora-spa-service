@@ -8,4 +8,9 @@ export const config = {
   resend: {
     apiKey: process.env.RESEND_API_KEY,
   },
+  collection: {
+    bookings: process.env.BOOKINGS_COLLECTION ?? "staging-bookings",
+    programs: process.env.PROGRAMS_COLLECTION ?? "staging-programs",
+    packages: process.env.PACKAGES_COLLECTION ?? "staging-packages",
+  },
 };
