@@ -70,7 +70,7 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 substitutions:
-  _IMAGE_NAME: deflora-spa-service-staging
+  _IMAGE_NAME: deflora-spa-service
   _SANITIZED_BRANCH_NAME: '${BRANCH_NAME//\//-}'
   _REGION: asia-southeast1
 
