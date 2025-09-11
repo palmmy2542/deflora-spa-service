@@ -1,15 +1,16 @@
 // lib/googleCalendar.ts
 import { google } from "googleapis";
+import { config } from "../config/config.js";
 
 const SCOPES = ["https://www.googleapis.com/auth/calendar"];
 
 const jwt = new google.auth.JWT({
-  email: process.env.GOOGLE_CLIENT_EMAIL!,
-  key: (process.env.GOOGLE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
+  email: config.googleService.clientEmail!,
+  key: (config.googleService.privateKey || "").replace(/\\n/g, "\n"),
   scopes: SCOPES,
 });
 
-if (!process.env.GOOGLE_CLIENT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
+if (!config.googleService.clientEmail || !config.googleService.privateKey) {
   console.warn(
     "WARNING: Missing environment variables GOOGLE_CLIENT_EMAIL and/or GOOGLE_PRIVATE_KEY. " +
       "Using Google Calendar API requires a valid Google Cloud API key."

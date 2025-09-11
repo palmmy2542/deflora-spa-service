@@ -5,6 +5,7 @@ export const config = {
     projectId: process.env.FIREBASE_PROJECT_ID,
   },
   port: process.env.PORT ?? 8080,
+  backofficeURL: process.env.BACKOFFICE_URL,
   resend: {
     apiKey: process.env.RESEND_API_KEY,
   },
@@ -12,5 +13,15 @@ export const config = {
     bookings: process.env.BOOKINGS_COLLECTION ?? "staging-bookings",
     programs: process.env.PROGRAMS_COLLECTION ?? "staging-programs",
     packages: process.env.PACKAGES_COLLECTION ?? "staging-packages",
+  },
+
+  googleCalendar: {
+    calendarId: process.env.CALENDAR_ID,
+    calendarEventId: process.env.CALENDAR_EVENT_ID,
+  },
+
+  googleService: {
+    clientEmail: process.env.GOOGLE_CLIENT_EMAIL,
+    privateKey: process.env.GOOGLE_PRIVATE_KEY,
   },
 };

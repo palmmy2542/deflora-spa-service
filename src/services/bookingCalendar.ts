@@ -1,9 +1,10 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { calendar } from "./googleCalendar.js";
 import type { BookingDoc } from "../utils/docTypes.js";
+import { config } from "../config/config.js";
 
 const TZ = "Asia/Bangkok";
-const CALENDAR_ID = process.env.CALENDAR_ID!;
+const CALENDAR_ID = config.googleCalendar.calendarId!;
 
 function toISOUTC(dateLike: any) {
   const d =
@@ -33,6 +34,8 @@ function computeEndISO(booking: BookingDoc) {
 export async function upsertBookingEvent(
   bookingRef: FirebaseFirestore.DocumentReference
 ) {
+  if (!CALENDAR_ID) throw new Error("CALENDAR_ID is not set");
+
   const snap = await bookingRef.get();
   if (!snap.exists) throw new Error("Booking not found");
   const booking = { id: snap.id, ...snap.data() } as unknown as BookingDoc & {
@@ -71,7 +74,7 @@ export async function upsertBookingEvent(
         ` Packages:\n${packages || "   - None"}`,
       ].join("\n");
     }),
-    `[Booking details](${process.env.BACKOFFICE_URL}/bookings/${booking.id})`,
+    `[Booking details](${config.backofficeURL}/bookings/${booking.id})`,
   ]
     .filter(Boolean) // remove null/empty
     .join("\n\n");
@@ -135,6 +138,7 @@ export async function upsertBookingEvent(
 export async function deleteBookingEvent(
   bookingRef: FirebaseFirestore.DocumentReference
 ) {
+  if (!CALENDAR_ID) throw new Error("CALENDAR_ID is not set");
   const snap = await bookingRef.get();
   if (!snap.exists) return;
   const data = snap.data() as any;
