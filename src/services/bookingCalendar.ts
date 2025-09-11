@@ -45,24 +45,36 @@ export async function upsertBookingEvent(
   } person`;
   const description = [
     `Booking ID: ${booking.id}`,
-    booking.contact?.email ? `Contact Email: ${booking.contact.email}` : "",
-    "",
-    booking.items.map((item) => {
+    booking.contact?.email ? `Contact Email: ${booking.contact.email}` : null,
+    ...booking.items.map((item) => {
       const programs = item.programs
-        .map((p) => `${p.nameSnapshot} | ${p.durationSnapshot ?? 0} min`)
-        .join(", ");
+        .map(
+          (p, index) =>
+            `   ${index + 1}. ${p.nameSnapshot} (${
+              p.durationSnapshot ?? 0
+            } min)`
+        )
+        .join("\n");
+
       const packages = item.packages
-        .map((p) => `${p.nameSnapshot} | ${p.durationSnapshot ?? 0} min`)
-        .join(", ");
-      return `${item.personName}: Programs: ${
-        programs.length > 0 ? programs : "-"
-      }, Packages: ${packages.length > 0 ? packages : "-"}`;
+        .map(
+          (p, index) =>
+            `   ${index + 1}. ${p.nameSnapshot} (${
+              p.durationSnapshot ?? 0
+            } min)`
+        )
+        .join("\n");
+
+      return [
+        `${item.personName}:`,
+        ` Programs:\n${programs || "   - None"}`,
+        ` Packages:\n${packages || "   - None"}`,
+      ].join("\n");
     }),
-    "",
     `[Booking details](${process.env.BACKOFFICE_URL}/bookings/${booking.id})`,
   ]
-    .filter(Boolean)
-    .join("\n");
+    .filter(Boolean) // remove null/empty
+    .join("\n\n");
 
   // Prepare the event payload
   const event = {
