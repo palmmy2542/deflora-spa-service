@@ -1,0 +1,179 @@
+steps:
+  # Establish some computed vars for subsequent steps
+  - name: gcr.io/cloud-builders/gcloud
+    id: "prepare-vars"
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        set -o pipefail
+        IMAGE="gcr.io/$PROJECT_ID/${_IMAGE_NAME}"
+        echo "IMAGE=${IMAGE}" >> $$_CB_ENV_FILE
+        # derive channel and tag state
+        if [[ -n "${TAG_NAME:-}" ]]; then
+          echo "BUILD_REASON=tag" >> $$_CB_ENV_FILE
+          echo "RELEASE_TAG=${TAG_NAME}" >> $$_CB_ENV_FILE
+          echo "CHANNEL=prod" >> $$_CB_ENV_FILE
+        else
+          echo "BUILD_REASON=branch" >> $$_CB_ENV_FILE
+          echo "RELEASE_TAG=" >> $$_CB_ENV_FILE
+          if [[ "${BRANCH_NAME}" == "main" ]]; then
+            echo "CHANNEL=staging" >> $$_CB_ENV_FILE
+          else
+            echo "CHANNEL=dev" >> $$_CB_ENV_FILE
+          fi
+        fi
+    env:
+      - _CB_ENV_FILE=/workspace/cb.env
+
+  - name: gcr.io/cloud-builders/gcloud
+    id: "show-config"
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        source /workspace/cb.env
+        echo "Build reason   : ${BUILD_REASON}"
+        echo "Release tag    : ${RELEASE_TAG:-<none>}"
+        echo "Channel        : ${CHANNEL}"
+        echo "Image          : ${IMAGE}"
+
+  # Try to pull cached images to seed BuildKit cache
+  - name: gcr.io/cloud-builders/docker
+    id: "pull-cache"
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        source /workspace/cb.env
+        export DOCKER_BUILDKIT=1
+        docker pull "${IMAGE}:latest" || true
+        docker pull "${IMAGE}:${_SANITIZED_BRANCH_NAME}-latest" || true
+
+  # Build with multiple tags + inline cache
+  - name: gcr.io/cloud-builders/docker
+    id: "build-image"
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        source /workspace/cb.env
+        export DOCKER_BUILDKIT=1
+
+        # Always tag with commit SHA
+        TAGS=( "-t" "${IMAGE}:$SHORT_SHA" )
+
+        # Branch tags
+        if [[ "${BUILD_REASON}" == "branch" ]]; then
+          TAGS+=( "-t" "${IMAGE}:${_SANITIZED_BRANCH_NAME}-latest" )
+          if [[ "${BRANCH_NAME}" == "main" ]]; then
+            TAGS+=( "-t" "${IMAGE}:latest" )
+          fi
+        fi
+
+        # Tag builds (releases)
+        if [[ "${BUILD_REASON}" == "tag" ]]; then
+          TAGS+=( "-t" "${IMAGE}:${RELEASE_TAG}" "-t" "${IMAGE}:release-latest" )
+        fi
+
+        echo "Building with tags: ${TAGS[@]}"
+
+        docker build \
+          "${TAGS[@]}" \
+          --cache-from "${IMAGE}:latest" \
+          --cache-from "${IMAGE}:${_SANITIZED_BRANCH_NAME}-latest" \
+          --build-arg BUILDKIT_INLINE_CACHE=1 \
+          -f Dockerfile \
+          .
+
+  # Push all tags that were created
+  - name: gcr.io/cloud-builders/docker
+    id: "push-images"
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        source /workspace/cb.env
+        IMAGE="gcr.io/$PROJECT_ID/${_IMAGE_NAME}"
+
+        # Always push SHA
+        docker push "${IMAGE}:$SHORT_SHA"
+
+        if [[ "${BUILD_REASON}" == "branch" ]]; then
+          docker push "${IMAGE}:${_SANITIZED_BRANCH_NAME}-latest"
+          if [[ "${BRANCH_NAME}" == "main" ]]; then
+            docker push "${IMAGE}:latest"
+          fi
+        else
+          # tag build
+          docker push "${IMAGE}:${RELEASE_TAG}"
+          docker push "${IMAGE}:release-latest"
+        fi
+
+  # Conditional deploy (tags => prod; main => staging if enabled; others => skip)
+  - name: gcr.io/cloud-builders/gcloud
+    id: "deploy"
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        source /workspace/cb.env
+        set -o pipefail
+
+        IMAGE="gcr.io/$PROJECT_ID/${_IMAGE_NAME}:$SHORT_SHA"
+        SHOULD_DEPLOY="false"
+        SERVICE="${_IMAGE_NAME}"
+
+        if [[ "${BUILD_REASON}" == "tag" ]]; then
+          SHOULD_DEPLOY="true"
+          echo "Release (tag) build: deploying to production"
+        elif [[ "${BRANCH_NAME}" == "main" && "${_DEPLOY_ON_MAIN}" == "true" ]]; then
+          SHOULD_DEPLOY="true"
+          echo "Main branch build: deploying (staging/prod depending on flags)"
+        else
+          echo "Non-main branch build: skipping deploy"
+        fi
+
+        if [[ "${SHOULD_DEPLOY}" == "true" ]]; then
+          gcloud run deploy "${SERVICE}" \
+            --image="${IMAGE}" \
+            --region="${_REGION}" \
+            --platform=managed \
+            --set-env-vars=COMMIT_SHA="$COMMIT_SHA" \
+            --set-env-vars=FIREBASE_PROJECT_ID="${_FIREBASE_PROJECT_ID}" \
+            --set-env-vars=ALLOWED_ORIGINS="${_ALLOWED_ORIGINS}" \
+            --set-env-vars=GOOGLE_CLIENT_EMAIL="${_GOOGLE_CLIENT_EMAIL}" \
+            --set-env-vars=CALENDAR_ID="${_CALENDAR_ID}" \
+            --set-env-vars=BACKOFFICE_URL="${_BACKOFFICE_URL}" \
+            --set-env-vars=BOOKING_COLLECTION_NAME="${_BOOKING_COLLECTION_NAME}" \
+            --set-env-vars=PROGRAM_COLLECTION_NAME="${_PROGRAM_COLLECTION_NAME}" \
+            --set-env-vars=PACKAGE_COLLECTION_NAME="${_PACKAGE_COLLECTION_NAME}" \
+            --set-secrets=RESEND_API_KEY="${_RESEND_API_KEY}" \
+            --set-secrets=GOOGLE_PRIVATE_KEY="${_GOOGLE_PRIVATE_KEY}" \
+            --quiet
+        fi
+timeout: 1000s
+options:
+  dynamicSubstitutions: true
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _IMAGE_NAME: deflora-spa-service
+  _SANITIZED_BRANCH_NAME: '${BRANCH_NAME//\//-}'
+  _REGION: asia-southeast1
+
+  # Environment variables
+  _FIREBASE_PROJECT_ID: "defloraspa-c018d"
+  _ALLOWED_ORIGINS: "https://deflora-spa-backoffice.vercel.app;https://deflora-spa-booking.vercel.app"
+  _RESEND_API_KEY: "resend-api-key:latest"
+
+  # Google Calendar
+  _GOOGLE_CLIENT_EMAIL: "deflora-spa-calendar@defloraspa-c018d.iam.gserviceaccount.com"
+  _GOOGLE_PRIVATE_KEY: "deflora-spa-calendar-private-key:latest"
+  _CALENDAR_ID: "support@defloraspa.com"
+
+  _BACKOFFICE_URL: "https://deflora-spa-backoffice.vercel.app"
+
+  _BOOKING_COLLECTION_NAME: "bookings"
+  _PROGRAM_COLLECTION_NAME: "programs"
+  _PACKAGE_COLLECTION_NAME: "packages"
