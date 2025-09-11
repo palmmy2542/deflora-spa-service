@@ -86,6 +86,6 @@ substitutions:
 
   _BACKOFFICE_URL: "https://deflora-spa-backoffice.vercel.app"
 
-  _BOOKING_COLLECTION_NAME: "staging-bookings"
-  _PROGRAM_COLLECTION_NAME: "staging-programs"
-  _PACKAGE_COLLECTION_NAME: "staging-packages"
+  _BOOKING_COLLECTION_NAME: "bookings"
+  _PROGRAM_COLLECTION_NAME: "programs"
+  _PACKAGE_COLLECTION_NAME: "packages"
