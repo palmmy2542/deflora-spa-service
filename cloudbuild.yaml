@@ -59,6 +59,9 @@ steps:
       - --set-secrets=GOOGLE_PRIVATE_KEY=${_GOOGLE_PRIVATE_KEY}
       - --set-env-vars=CALENDAR_ID=${_CALENDAR_ID}
       - --set-env-vars=BACKOFFICE_URL=${_BACKOFFICE_URL}
+      - --set-env-vars=BOOKING_COLLECTION_NAME=${_BOOKING_COLLECTION_NAME}
+      - --set-env-vars=PROGRAM_COLLECTION_NAME=${_PROGRAM_COLLECTION_NAME}
+      - --set-env-vars=PACKAGE_COLLECTION_NAME=${_PACKAGE_COLLECTION_NAME}
 
 timeout: 1000s
 
@@ -82,3 +85,7 @@ substitutions:
   _CALENDAR_ID: "palmch2542@gmail.com"
 
   _BACKOFFICE_URL: "https://deflora-spa-backoffice.vercel.app"
+
+  _BOOKING_COLLECTION_NAME: "staging-bookings"
+  _PROGRAM_COLLECTION_NAME: "staging-programs"
+  _PACKAGE_COLLECTION_NAME: "staging-packages"
