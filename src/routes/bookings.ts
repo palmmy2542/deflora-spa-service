@@ -421,12 +421,16 @@ router.get("/", authenticate, async (req, res, next) => {
       const createdAtIso = data?.createdAt?.toDate
         ? data.createdAt.toDate().toISOString()
         : null;
+      const updatedAtIso = data?.updatedAt?.toDate
+        ? data.updatedAt.toDate().toISOString()
+        : null;
 
       return {
         id: d.id,
         ...data,
         arrivalAt: arrivalAtIso,
         createdAt: createdAtIso,
+        updatedAt: updatedAtIso,
       };
     });
     // If we ignored date range due to search, signal that politely.
