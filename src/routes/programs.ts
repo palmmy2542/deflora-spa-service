@@ -24,8 +24,13 @@ router.post("/", authenticate, async (req, res, next) => {
 
 router.get("/", authenticate, async (req, res, next) => {
   try {
-    const snap = await col.orderBy("name").get();
-    const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const snap = await col.orderBy("updatedAt", "desc").get();
+    const data = snap.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+      createdAt: d.data().createdAt.toDate(),
+      updatedAt: d.data().updatedAt.toDate(),
+    }));
     res.json(data);
   } catch (e) {
     next(e);
@@ -34,8 +39,16 @@ router.get("/", authenticate, async (req, res, next) => {
 
 router.get("/active", async (req, res, next) => {
   try {
-    const snap = await col.where("isActive", "==", true).orderBy("name").get();
-    const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const snap = await col
+      .where("isActive", "==", true)
+      .orderBy("updatedAt", "desc")
+      .get();
+    const data = snap.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+      createdAt: d.data().createdAt.toDate(),
+      updatedAt: d.data().updatedAt.toDate(),
+    }));
     res.json(data);
   } catch (e) {
     next(e);
@@ -49,7 +62,12 @@ router.get("/:id", authenticate, async (req, res, next) => {
 
     const d = await col.doc(req.params.id).get();
     if (!d.exists) return res.status(404).json({ error: "Program not found" });
-    res.json({ id: d.id, ...d.data() });
+    res.json({
+      id: d.id,
+      ...d.data(),
+      createdAt: d.data()?.createdAt?.toDate(),
+      updatedAt: d.data()?.updatedAt?.toDate(),
+    });
   } catch (e) {
     next(e);
   }
@@ -66,7 +84,12 @@ router.patch("/:id", authenticate, async (req, res, next) => {
       .doc(req.params.id)
       .update({ ...parsed, updatedAt: FieldValue.serverTimestamp() });
     const d = await col.doc(req.params.id).get();
-    res.json({ id: d.id, ...d.data() });
+    res.json({
+      id: d.id,
+      ...d.data(),
+      createdAt: d.data()?.createdAt?.toDate(),
+      updatedAt: d.data()?.updatedAt?.toDate(),
+    });
   } catch (e) {
     next(e);
   }

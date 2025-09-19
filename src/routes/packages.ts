@@ -24,8 +24,13 @@ packageRouter.post("/", authenticate, async (req, res, next) => {
 
 packageRouter.get("/", authenticate, async (_req, res, next) => {
   try {
-    const snap = await col.orderBy("name").get();
-    const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const snap = await col.orderBy("updatedAt", "desc").get();
+    const data = snap.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+      createdAt: d.data()?.createdAt?.toDate(),
+      updatedAt: d.data()?.updatedAt?.toDate(),
+    }));
     res.json(data);
   } catch (e) {
     next(e);
@@ -34,8 +39,16 @@ packageRouter.get("/", authenticate, async (_req, res, next) => {
 
 packageRouter.get("/active", async (_req, res, next) => {
   try {
-    const snap = await col.where("isActive", "==", true).orderBy("name").get();
-    const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const snap = await col
+      .where("isActive", "==", true)
+      .orderBy("updatedAt", "desc")
+      .get();
+    const data = snap.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+      createdAt: d.data()?.createdAt?.toDate(),
+      updatedAt: d.data()?.updatedAt?.toDate(),
+    }));
     res.json(data);
   } catch (e) {
     next(e);
@@ -48,7 +61,12 @@ packageRouter.get("/:id", authenticate, async (req, res, next) => {
       return res.status(404).json({ error: "Package not found" });
     const d = await col.doc(req.params.id).get();
     if (!d.exists) return res.status(404).json({ error: "Package not found" });
-    res.json({ id: d.id, ...d.data() });
+    res.json({
+      id: d.id,
+      ...d.data(),
+      createdAt: d.data()?.createdAt?.toDate(),
+      updatedAt: d.data()?.updatedAt?.toDate(),
+    });
   } catch (e) {
     next(e);
   }
@@ -64,7 +82,12 @@ packageRouter.patch("/:id", authenticate, async (req, res, next) => {
       .doc(req.params.id)
       .update({ ...parsed, updatedAt: FieldValue.serverTimestamp() });
     const d = await col.doc(req.params.id).get();
-    res.json({ id: d.id, ...d.data() });
+    res.json({
+      id: d.id,
+      ...d.data(),
+      createdAt: d.data()?.createdAt?.toDate(),
+      updatedAt: d.data()?.updatedAt?.toDate(),
+    });
   } catch (e) {
     next(e);
   }
