@@ -4,6 +4,7 @@ import { z } from "zod";
 export const ProgramSchema = z.object({
   name: z.string().min(1),
   description: z.string().default(""),
+  type: z.enum(["massage", "facial", "treatment"]).default("massage"),
   durationOptions: z
     .array(
       z.object({
