@@ -132,6 +132,8 @@ export async function upsertBookingEvent(
     updatedAt: FieldValue.serverTimestamp(),
   });
 
+  console.log("upsertBookingEvent success");
+
   return saved;
 }
 
@@ -159,4 +161,6 @@ export async function deleteBookingEvent(
     calendarHtmlLink: FieldValue.delete(),
     updatedAt: FieldValue.serverTimestamp(),
   });
+
+  console.log("deleteBookingEvent success");
 }
