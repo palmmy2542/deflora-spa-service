@@ -27,7 +27,6 @@ export const config = {
 
   googleCalendar: {
     calendarId: process.env.CALENDAR_ID,
-    calendarEventId: process.env.CALENDAR_EVENT_ID,
   },
 
   googleService: {
