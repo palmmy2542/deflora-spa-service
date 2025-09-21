@@ -19,7 +19,6 @@ WORKDIR /usr/src/app
 # Copy only necessary files from builder
 COPY --from=builder /usr/src/app/package*.json ./
 COPY --from=builder /usr/src/app/dist ./dist
-COPY --from=builder /usr/src/app/src/email-templates ./dist/email-templates
 
 RUN yarn install --production --frozen-lockfile
 
