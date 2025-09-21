@@ -689,4 +689,66 @@ router.post("/:id/cancel", authenticate, async (req: any, res, next) => {
   }
 });
 
+router.post(
+  "/:id/resend-confirmation",
+  authenticate,
+  async (req: any, res, next) => {
+    try {
+      const ref = col.doc(req.params.id);
+      const fresh = await ref.get();
+      const data = fresh.data() as any;
+
+      try {
+        await upsertBookingEvent(ref);
+      } catch (e) {
+        console.error(`Error upsertBookingEvent: ${e}`);
+      }
+
+      try {
+        if (!config.sendgrid.templates.bookingConfirmed) {
+          console.error("Booking confirmed template not configured");
+          return;
+        }
+        await sendTemplatedEmail({
+          templateId: config.sendgrid.templates.bookingConfirmed,
+          data: {
+            booking: {
+              dateTime: formatDateForEmail(data.arrivalAt.toDate()),
+            },
+            emailTitle: "Booking Confirmed",
+            guests: data.items.map(
+              (it: { personName: any; programs: any[]; packages: any[] }) => ({
+                name: it.personName,
+                treatments: [
+                  ...it.programs.map(
+                    (p: { nameSnapshot: any; durationSnapshot: any }) => ({
+                      name: p.nameSnapshot ?? "None",
+                      duration: `${p.durationSnapshot} minutes`,
+                    })
+                  ),
+                  ...it.packages.map(
+                    (p: { nameSnapshot: any; durationSnapshot: any }) => ({
+                      name: p.nameSnapshot ?? "None",
+                      duration: `${p.durationSnapshot} minutes`,
+                    })
+                  ),
+                ],
+              })
+            ),
+          },
+          to: data.contact.email,
+          subject: "Booking Confirmed",
+        });
+      } catch (e) {
+        console.error(`Error sending email ${e}`);
+      }
+
+      res.json({ id: fresh.id, ...fresh.data() });
+      res.json({ id: fresh.id, ...fresh.data() });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
 export default router;
