@@ -744,7 +744,6 @@ router.post(
       }
 
       res.json({ id: fresh.id, ...fresh.data() });
-      res.json({ id: fresh.id, ...fresh.data() });
     } catch (e) {
       next(e);
     }
