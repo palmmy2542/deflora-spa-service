@@ -72,7 +72,6 @@ function mapItemPackageToSnapshot(
     qty: item.qty,
     priceSnapshot: pkg.packagePrice,
     nameSnapshot: pkg.name,
-    originalPriceSnapshot: pkg.originalPrice,
     numberOfPeopleSnapshot: pkg.numberOfPeople,
     durationSnapshot: pkg.durationMinutes,
     currencySnapshot: pkg.currency,

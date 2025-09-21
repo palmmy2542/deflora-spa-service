@@ -22,7 +22,6 @@ export type ProgramInput = z.infer<typeof ProgramSchema>;
 export const PackageSchema = z.object({
   name: z.string().min(1),
   description: z.string().default(""),
-  originalPrice: z.number().nonnegative(),
   packagePrice: z.number().nonnegative(),
   numberOfPeople: z.number().int().positive(),
   durationMinutes: z.number().int().positive(),
@@ -50,7 +49,6 @@ export const BookingPackageSelectionSchema = z.object({
 
   // optional snapshots (server may populate to freeze pricing/names at booking time)
   nameSnapshot: z.string().optional(),
-  originalPriceSnapshot: z.number().nonnegative().optional(),
   packagePriceSnapshot: z.number().nonnegative().optional(),
   numberOfPeopleSnapshot: z.number().int().positive().optional(),
   durationSnapshot: z.number().int().positive().optional(),

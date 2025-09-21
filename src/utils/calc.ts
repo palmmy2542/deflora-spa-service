@@ -44,7 +44,6 @@ export async function snapshotPackages(packageIds: string[]) {
       map.set(packageIds[idx], {
         name: d.name,
         description: d.description,
-        originalPrice: d.originalPrice,
         packagePrice: d.packagePrice,
         numberOfPeople: d.numberOfPeople,
         durationMinutes: d.durationMinutes,
