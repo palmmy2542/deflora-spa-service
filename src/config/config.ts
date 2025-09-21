@@ -10,8 +10,8 @@ export const config = {
     apiKey: process.env.RESEND_API_KEY,
   },
   sendgrid: {
-    apiKey: process.env.SENDGRID_API_KEY,
-    fromEmail: process.env.SENDGRID_FROM_EMAIL,
+    apiKey: process.env.SENDGRID_API_KEY ?? "",
+    fromEmail: process.env.SENDGRID_FROM_EMAIL ?? "",
 
     templates: {
       bookingPending: process.env.SENDGRID_TEMPLATE_BOOKING_PENDING,
