@@ -130,8 +130,6 @@ router.post("/", async (req: any, res, next) => {
     });
 
     const snap = await doc.get();
-    res.status(201).json({ id: doc.id, ...snap.data() });
-
     try {
       if (!config.sendgrid.templates.bookingPending) {
         console.error("Booking pending template not configured");
@@ -164,6 +162,8 @@ router.post("/", async (req: any, res, next) => {
     } catch (e) {
       console.error(`Error sending email ${e}`);
     }
+
+    res.status(201).json({ id: doc.id, ...snap.data() });
   } catch (e) {
     next(e);
   }
@@ -591,33 +591,50 @@ router.post("/:id/confirm", authenticate, async (req: any, res, next) => {
     const fresh = await ref.get();
     const data = fresh.data() as any;
 
-    const templateData = {
-      name: data.contact?.name,
-      companyName: "Deflora spa",
-      date: new Date(data.arrivalAt.toDate()).toLocaleDateString(),
-      guests: data.items.map((it: { personName: any; programs: any[] }) => ({
-        name: it.personName,
-        programs: it.programs.map((p) => p.nameSnapshot),
-      })),
-      year: new Date().getFullYear(),
-    };
-    // const compileTemplate = await generateEmail(
-    //   "booking-confirmed.hbs",
-    //   templateData
-    // );
     try {
       await upsertBookingEvent(ref);
     } catch (e) {
       console.error(`Error upsertBookingEvent: ${e}`);
     }
 
-    // try {
-    //   await sendEmail(
-    //     data.contact?.email,
-    //     `Spa appointment confirmed Booking ID: ${req.params.id}`,
-    //     compileTemplate
-    //   );
-    // } catch (error: any) {}
+    try {
+      if (!config.sendgrid.templates.bookingConfirmed) {
+        console.error("Booking confirmed template not configured");
+        return;
+      }
+      await sendTemplatedEmail({
+        templateId: config.sendgrid.templates.bookingConfirmed,
+        data: {
+          booking: {
+            dateTime: formatDateForEmail(data.arrivalAt.toDate()),
+          },
+          emailTitle: "Booking Confirmed",
+          guests: data.items.map(
+            (it: { personName: any; programs: any[]; packages: any[] }) => ({
+              name: it.personName,
+              treatments: [
+                ...it.programs.map(
+                  (p: { nameSnapshot: any; durationSnapshot: any }) => ({
+                    name: p.nameSnapshot ?? "None",
+                    duration: `${p.durationSnapshot} minutes`,
+                  })
+                ),
+                ...it.packages.map(
+                  (p: { nameSnapshot: any; durationSnapshot: any }) => ({
+                    name: p.nameSnapshot ?? "None",
+                    duration: `${p.durationSnapshot} minutes`,
+                  })
+                ),
+              ],
+            })
+          ),
+        },
+        to: data.contact.email,
+        subject: "Booking Confirmed",
+      });
+    } catch (e) {
+      console.error(`Error sending email ${e}`);
+    }
 
     res.json({ id: fresh.id, ...fresh.data() });
   } catch (e) {
@@ -640,16 +657,6 @@ router.post("/:id/cancel", authenticate, async (req: any, res, next) => {
     });
     const fresh = await ref.get();
     const data = fresh.data() as any;
-    // const compileTemplate = await generateEmail("booking-canceled.hbs", {
-    //   name: data?.contact?.name,
-    //   companyName: "Deflora spa",
-    //   date: new Date(data?.arrivalAt?.toDate()).toLocaleDateString(),
-    //   guests: data.items.map((it: { personName: any; programs: any[] }) => ({
-    //     name: it.personName,
-    //     programs: it.programs.map((p) => p.nameSnapshot),
-    //   })),
-    //   year: new Date().getFullYear(),
-    // });
 
     try {
       await deleteBookingEvent(ref);
@@ -657,13 +664,25 @@ router.post("/:id/cancel", authenticate, async (req: any, res, next) => {
       console.error(`Error deleteBookingEvent: ${e}`);
     }
 
-    // try {
-    //   await sendEmail(
-    //     data?.contact?.email,
-    //     `Spa appointment canceled Booking ID: ${req.params.id}`,
-    //     compileTemplate
-    //   );
-    // } catch (error: any) {}
+    try {
+      if (!config.sendgrid.templates.bookingCanceled) {
+        console.error("Booking canceled template not configured");
+        return;
+      }
+      await sendTemplatedEmail({
+        templateId: config.sendgrid.templates.bookingCanceled,
+        data: {
+          booking: {
+            dateTime: formatDateForEmail(data.arrivalAt.toDate()),
+          },
+          emailTitle: "Booking Canceled",
+        },
+        to: data.contact.email,
+        subject: "Booking Canceled",
+      });
+    } catch (e) {
+      console.error(`Error sending email ${e}`);
+    }
 
     res.json({ id: fresh.id, ...fresh.data() });
   } catch (e) {

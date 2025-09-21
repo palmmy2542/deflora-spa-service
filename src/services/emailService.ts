@@ -92,6 +92,7 @@ export async function sendTemplatedEmail(options: {
   cc?: string | string[];
   bcc?: string | string[];
 }): Promise<void> {
+  console.log("Sending email to", options.to);
   await sendWithTemplateId({
     ...options,
     apiKey: config.sendgrid.apiKey ?? "",
