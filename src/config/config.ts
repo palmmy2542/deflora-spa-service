@@ -15,6 +15,8 @@ export const config = {
 
     templates: {
       bookingPending: process.env.SENDGRID_TEMPLATE_BOOKING_PENDING,
+      bookingConfirmed: process.env.SENDGRID_TEMPLATE_BOOKING_CONFIRMED,
+      bookingCanceled: process.env.SENDGRID_TEMPLATE_BOOKING_CANCELED,
     },
   },
   collection: {
