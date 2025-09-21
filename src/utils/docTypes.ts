@@ -1,5 +1,6 @@
 export type ProgramDoc = {
   name: string;
+  type: "massage" | "facial" | "treatment";
   durationOptions: Array<{ durationMinutes: number; price: number }>;
   currency: string;
   isActive: boolean;

@@ -54,6 +54,7 @@ function mapItemProgramToSnapshot(
   return {
     programId: item.programId,
     qty: item.qty,
+    typeSnapshot: program.type,
     priceSnapshot: durationOption.price,
     nameSnapshot: program.name,
     durationSnapshot: durationOption.durationMinutes,

@@ -17,6 +17,7 @@ export async function snapshotPrograms(programIds: string[]) {
       }
       map.set(programIds[idx], {
         name: d.name,
+        type: d.type,
         durationOptions: d.durationOptions,
         currency: d.currency ?? "THB",
         isActive: d.isActive ?? true,
