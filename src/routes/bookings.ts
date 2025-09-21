@@ -1,26 +1,27 @@
 import { Router } from "express";
 import { FieldPath } from "firebase-admin/firestore";
 import z from "zod";
+import { config } from "../config/config.js";
 import { db, FieldValue, Timestamp } from "../config/firebase.js";
 import { authenticate } from "../middleware/auth.js";
 import {
   deleteBookingEvent,
   upsertBookingEvent,
 } from "../services/bookingCalendar.js";
-import { generateEmail, sendEmail } from "../services/emailService.js";
+import { sendTemplatedEmail } from "../services/emailService.js";
 import {
   computeTotals,
   snapshotPackages,
   snapshotPrograms,
 } from "../utils/calc.js";
 import type { PackageDoc, ProgramDoc } from "../utils/docTypes.js";
+import { formatDateForEmail } from "../utils/formatDateForEmail.js";
 import {
   BookingCreateSchema,
   BookingPackageSelectionSchema,
   BookingProgramSelectionSchema,
   BookingUpdateDetailsSchema,
 } from "../validators/schemas.js";
-import { config } from "../config/config.js";
 
 const router = Router();
 const col = db.collection(config.collection.bookings);
@@ -130,23 +131,36 @@ router.post("/", async (req: any, res, next) => {
 
     const snap = await doc.get();
     res.status(201).json({ id: doc.id, ...snap.data() });
-    const compileTemplate = await generateEmail("booking-pending.hbs", {
-      name: body.contact.name,
-      companyName: "Deflora spa",
-      date: new Date(body.arrivalAt).toLocaleDateString(),
-      guests: body.items.map((it) => ({
-        name: it.personName,
-        programs: it.programs.map((p) => p.nameSnapshot),
-      })),
-      year: new Date().getFullYear(),
-    });
 
     try {
-      await sendEmail(
-        body.contact.email,
-        "Spa appointment pending",
-        compileTemplate
-      );
+      if (!config.sendgrid.templates.bookingPending) {
+        console.error("Booking pending template not configured");
+        return;
+      }
+      await sendTemplatedEmail({
+        templateId: config.sendgrid.templates.bookingPending,
+        data: {
+          booking: {
+            dateTime: formatDateForEmail(body.arrivalAt),
+          },
+          emailTitle: "Booking Pending",
+          guests: body.items.map((it) => ({
+            name: it.personName,
+            treatments: [
+              ...it.programs.map((p) => ({
+                name: p.nameSnapshot ?? "None",
+                duration: `${p.durationSnapshot} minutes`,
+              })),
+              ...it.packages.map((p) => ({
+                name: p.nameSnapshot ?? "None",
+                duration: `${p.durationSnapshot} minutes`,
+              })),
+            ],
+          })),
+        },
+        to: body.contact.email,
+        subject: "Booking Pending",
+      });
     } catch (e) {
       console.error(`Error sending email ${e}`);
     }
@@ -587,23 +601,23 @@ router.post("/:id/confirm", authenticate, async (req: any, res, next) => {
       })),
       year: new Date().getFullYear(),
     };
-    const compileTemplate = await generateEmail(
-      "booking-confirmed.hbs",
-      templateData
-    );
+    // const compileTemplate = await generateEmail(
+    //   "booking-confirmed.hbs",
+    //   templateData
+    // );
     try {
       await upsertBookingEvent(ref);
     } catch (e) {
       console.error(`Error upsertBookingEvent: ${e}`);
     }
 
-    try {
-      await sendEmail(
-        data.contact?.email,
-        `Spa appointment confirmed Booking ID: ${req.params.id}`,
-        compileTemplate
-      );
-    } catch (error: any) {}
+    // try {
+    //   await sendEmail(
+    //     data.contact?.email,
+    //     `Spa appointment confirmed Booking ID: ${req.params.id}`,
+    //     compileTemplate
+    //   );
+    // } catch (error: any) {}
 
     res.json({ id: fresh.id, ...fresh.data() });
   } catch (e) {
@@ -626,16 +640,16 @@ router.post("/:id/cancel", authenticate, async (req: any, res, next) => {
     });
     const fresh = await ref.get();
     const data = fresh.data() as any;
-    const compileTemplate = await generateEmail("booking-canceled.hbs", {
-      name: data?.contact?.name,
-      companyName: "Deflora spa",
-      date: new Date(data?.arrivalAt?.toDate()).toLocaleDateString(),
-      guests: data.items.map((it: { personName: any; programs: any[] }) => ({
-        name: it.personName,
-        programs: it.programs.map((p) => p.nameSnapshot),
-      })),
-      year: new Date().getFullYear(),
-    });
+    // const compileTemplate = await generateEmail("booking-canceled.hbs", {
+    //   name: data?.contact?.name,
+    //   companyName: "Deflora spa",
+    //   date: new Date(data?.arrivalAt?.toDate()).toLocaleDateString(),
+    //   guests: data.items.map((it: { personName: any; programs: any[] }) => ({
+    //     name: it.personName,
+    //     programs: it.programs.map((p) => p.nameSnapshot),
+    //   })),
+    //   year: new Date().getFullYear(),
+    // });
 
     try {
       await deleteBookingEvent(ref);
@@ -643,13 +657,13 @@ router.post("/:id/cancel", authenticate, async (req: any, res, next) => {
       console.error(`Error deleteBookingEvent: ${e}`);
     }
 
-    try {
-      await sendEmail(
-        data?.contact?.email,
-        `Spa appointment canceled Booking ID: ${req.params.id}`,
-        compileTemplate
-      );
-    } catch (error: any) {}
+    // try {
+    //   await sendEmail(
+    //     data?.contact?.email,
+    //     `Spa appointment canceled Booking ID: ${req.params.id}`,
+    //     compileTemplate
+    //   );
+    // } catch (error: any) {}
 
     res.json({ id: fresh.id, ...fresh.data() });
   } catch (e) {
