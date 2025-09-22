@@ -86,7 +86,7 @@ substitutions:
   # Google Calendar
   _GOOGLE_CLIENT_EMAIL: "deflora-spa-calendar@defloraspa-c018d.iam.gserviceaccount.com"
   _GOOGLE_PRIVATE_KEY: "deflora-spa-calendar-private-key:latest"
-  _CALENDAR_ID: "support@defloraspa.com"
+  _CALENDAR_ID: "defloraspaphuket@gmail.com"
 
   _BACKOFFICE_URL: "https://deflora-spa-backoffice.vercel.app"
 
