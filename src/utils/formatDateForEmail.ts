@@ -1,4 +1,7 @@
-export function formatDateForEmail(input: string, timeZone?: string) {
+export function formatDateForEmail(
+  input: string,
+  timeZone: string = "Asia/Bangkok"
+) {
   const d = new Date(input);
 
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -8,7 +11,7 @@ export function formatDateForEmail(input: string, timeZone?: string) {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
-    ...(timeZone ? { timeZone } : {}),
+    timeZone, // default: Asia/Bangkok
   }).formatToParts(d);
 
   const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
