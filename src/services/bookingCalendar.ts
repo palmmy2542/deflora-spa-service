@@ -70,8 +70,8 @@ export async function upsertBookingEvent(
 
       return [
         `${item.personName}:`,
-        ` Programs:\n${programs || "   - None"}`,
-        ` Packages:\n${packages || "   - None"}`,
+        `${programs ? ` Programs:\n${programs}` : ""}`,
+        `${packages ? ` Packages:\n${packages}` : ""}`,
       ].join("\n");
     }),
     `[Booking details](${config.backofficeURL}/bookings/${booking.id})`,
