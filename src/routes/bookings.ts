@@ -574,7 +574,7 @@ router.get("/:id", authenticate, async (req, res, next) => {
     if (!req.params.id)
       return res.status(404).json({ error: "Booking not found" });
 
-    const d = await col.doc(req.params.id).get();
+    const d = await col.doc(req.params.id as string).get();
     if (!d.exists) return res.status(404).json({ error: "Booking not found" });
     res.json({
       id: d.id,
@@ -589,7 +589,7 @@ router.get("/:id", authenticate, async (req, res, next) => {
 router.patch("/:id", authenticate, async (req: any, res, next) => {
   try {
     const updates = BookingUpdateDetailsSchema.parse(req.body);
-    const ref = col.doc(req.params.id);
+    const ref = col.doc(req.params.id as string);
 
     await db.runTransaction(async (trx) => {
       const snap = await trx.get(ref);
@@ -670,7 +670,7 @@ router.patch("/:id", authenticate, async (req: any, res, next) => {
 
 router.post("/:id/confirm", authenticate, async (req: any, res, next) => {
   try {
-    const ref = col.doc(req.params.id);
+    const ref = col.doc(req.params.id as string);
     await db.runTransaction(async (trx) => {
       const snap = await trx.get(ref);
       if (!snap.exists) throw new Error("Booking not found");
@@ -723,7 +723,7 @@ router.post("/:id/confirm", authenticate, async (req: any, res, next) => {
 
 router.post("/:id/cancel", authenticate, async (req: any, res, next) => {
   try {
-    const ref = col.doc(req.params.id);
+    const ref = col.doc(req.params.id as string);
     await db.runTransaction(async (trx) => {
       const snap = await trx.get(ref);
       if (!snap.exists) throw new Error("Booking not found");
@@ -775,7 +775,7 @@ router.post(
   authenticate,
   async (req: any, res, next) => {
     try {
-      const ref = col.doc(req.params.id);
+      const ref = col.doc(req.params.id as string);
       const fresh = await ref.get();
       const data = fresh.data() as any;
 

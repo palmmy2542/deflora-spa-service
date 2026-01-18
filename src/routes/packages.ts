@@ -59,7 +59,7 @@ packageRouter.get("/:id", authenticate, async (req, res, next) => {
   try {
     if (!req.params.id)
       return res.status(404).json({ error: "Package not found" });
-    const d = await col.doc(req.params.id).get();
+    const d = await col.doc(req.params.id as string).get();
     if (!d.exists) return res.status(404).json({ error: "Package not found" });
     res.json({
       id: d.id,
@@ -79,9 +79,9 @@ packageRouter.patch("/:id", authenticate, async (req, res, next) => {
     // Partial validation: use .partial()
     const parsed = PackageSchema.partial().parse(req.body);
     await col
-      .doc(req.params.id)
+      .doc(req.params.id as string)
       .update({ ...parsed, updatedAt: FieldValue.serverTimestamp() });
-    const d = await col.doc(req.params.id).get();
+    const d = await col.doc(req.params.id as string).get();
     res.json({
       id: d.id,
       ...d.data(),
@@ -99,7 +99,7 @@ packageRouter.delete("/:id", authenticate, async (req, res, next) => {
     if (!req.params.id)
       return res.status(404).json({ error: "Package not found" });
     await col
-      .doc(req.params.id)
+      .doc(req.params.id as string)
       .update({ isActive: false, updatedAt: FieldValue.serverTimestamp() });
     res.status(204).send();
   } catch (e) {

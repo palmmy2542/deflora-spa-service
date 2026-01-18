@@ -57,10 +57,10 @@ router.get("/active", async (req, res, next) => {
 
 router.get("/:id", authenticate, async (req, res, next) => {
   try {
-    if (!req.params.id)
-      return res.status(404).json({ error: "Program not found" });
+    const id = req.params.id;
+    if (!id) return res.status(404).json({ error: "Program not found" });
 
-    const d = await col.doc(req.params.id).get();
+    const d = await col.doc(id as string).get();
     if (!d.exists) return res.status(404).json({ error: "Program not found" });
     res.json({
       id: d.id,
@@ -75,15 +75,15 @@ router.get("/:id", authenticate, async (req, res, next) => {
 
 router.patch("/:id", authenticate, async (req, res, next) => {
   try {
-    if (!req.params.id)
-      return res.status(404).json({ error: "Program not found" });
+    const id = req.params.id;
+    if (!id) return res.status(404).json({ error: "Program not found" });
 
     const parsed = ProgramSchema.partial().parse(req.body);
 
     await col
-      .doc(req.params.id)
+      .doc(id as string)
       .update({ ...parsed, updatedAt: FieldValue.serverTimestamp() });
-    const d = await col.doc(req.params.id).get();
+    const d = await col.doc(id as string).get();
     res.json({
       id: d.id,
       ...d.data(),
@@ -98,11 +98,11 @@ router.patch("/:id", authenticate, async (req, res, next) => {
 // Soft-delete: isActive = false
 router.delete("/:id", authenticate, async (req, res, next) => {
   try {
-    if (!req.params.id)
-      return res.status(404).json({ error: "Program not found" });
+    const id = req.params.id;
+    if (!id) return res.status(404).json({ error: "Program not found" });
 
     await col
-      .doc(req.params.id)
+      .doc(id as string)
       .update({ isActive: false, updatedAt: FieldValue.serverTimestamp() });
     res.status(204).send();
   } catch (e) {
