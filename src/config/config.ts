@@ -14,11 +14,18 @@ export const config = {
     fromEmail: process.env.SENDGRID_FROM_EMAIL ?? "",
 
     templates: {
+      // Standard booking templates
       bookingPending: process.env.SENDGRID_TEMPLATE_BOOKING_PENDING,
       bookingConfirmed: process.env.SENDGRID_TEMPLATE_BOOKING_CONFIRMED,
       bookingCanceled: process.env.SENDGRID_TEMPLATE_BOOKING_CANCELED,
+
+      // Quick reservation templates
       quickReservationPending:
         process.env.SENDGRID_TEMPLATE_QUICK_RESERVATION_PENDING,
+      quickReservationConfirmed:
+        process.env.SENDGRID_TEMPLATE_QUICK_RESERVATION_CONFIRMED,
+      quickReservationCanceled:
+        process.env.SENDGRID_TEMPLATE_QUICK_RESERVATION_CANCELED,
     },
   },
   collection: {

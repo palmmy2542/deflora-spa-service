@@ -1,8 +1,8 @@
 export function formatDateForEmail(
-  input: string,
-  timeZone: string = "Asia/Bangkok"
+  input: string | Date,
+  timeZone: string = "Asia/Bangkok",
 ) {
-  const d = new Date(input);
+  const d = input instanceof Date ? input : new Date(input);
 
   const parts = new Intl.DateTimeFormat("en-GB", {
     day: "numeric",

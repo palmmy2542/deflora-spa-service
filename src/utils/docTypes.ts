@@ -19,7 +19,9 @@ export type PackageDoc = {
 export type BookingDoc = {
   id: string;
   arrivalAt: FirebaseFirestore.Timestamp;
+  type: "NORMAL" | "QUICK";
   contact?: { name?: string; email?: string; phone?: string };
+  partySize?: number;
   items: Array<{
     personName: string;
     programs: Array<{

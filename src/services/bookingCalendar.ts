@@ -19,20 +19,23 @@ function computeEndISO(booking: BookingDoc) {
     booking.arrivalAt?.toDate?.() ??
       (typeof booking.arrivalAt === "string"
         ? booking.arrivalAt
-        : booking.arrivalAt.toMillis())
+        : booking.arrivalAt.toMillis()),
   );
   const longestMinutes = Math.max(
     0,
     ...booking.items.map((it) =>
-      (it.programs || []).reduce((sum, p) => sum + (p.durationSnapshot || 0), 0)
-    )
+      (it.programs || []).reduce(
+        (sum, p) => sum + (p.durationSnapshot || 0),
+        0,
+      ),
+    ),
   );
   const end = new Date(start.getTime() + longestMinutes * 60_000);
   return { startISO: start.toISOString(), endISO: end.toISOString() };
 }
 
 export async function upsertBookingEvent(
-  bookingRef: FirebaseFirestore.DocumentReference
+  bookingRef: FirebaseFirestore.DocumentReference,
 ) {
   if (!CALENDAR_ID) throw new Error("CALENDAR_ID is not set");
 
@@ -55,7 +58,7 @@ export async function upsertBookingEvent(
           (p, index) =>
             `   ${index + 1}. ${p.nameSnapshot} (${
               p.durationSnapshot ?? 0
-            } min)`
+            } min)`,
         )
         .join("\n");
 
@@ -64,7 +67,7 @@ export async function upsertBookingEvent(
           (p, index) =>
             `   ${index + 1}. ${p.nameSnapshot} (${
               p.durationSnapshot ?? 0
-            } min)`
+            } min)`,
         )
         .join("\n");
 
@@ -139,7 +142,7 @@ export async function upsertBookingEvent(
 }
 
 export async function deleteBookingEvent(
-  bookingRef: FirebaseFirestore.DocumentReference
+  bookingRef: FirebaseFirestore.DocumentReference,
 ) {
   if (!CALENDAR_ID) throw new Error("CALENDAR_ID is not set");
   const snap = await bookingRef.get();
@@ -177,18 +180,18 @@ export async function createQuickReservationEvent(
     contact?: { name?: string; email?: string };
     partySize: number;
     arrivalAt: FirebaseFirestore.Timestamp | { toDate: () => Date };
-  }
+  },
 ) {
   if (!CALENDAR_ID) throw new Error("CALENDAR_ID is not set");
 
   const start = toISOUTC(booking.arrivalAt);
   const endISO = new Date(
-    new Date(start).getTime() + 2 * 60 * 60 * 1000
+    new Date(start).getTime() + 2 * 60 * 60 * 1000,
   ).toISOString(); // 2 hours default
 
   const title = `${booking.contact?.name ?? "Guest"} x ${
     booking.partySize
-  } person`;
+  } person (Quick)`;
   const description = [
     `Booking ID: ${booking.id}`,
     booking.contact?.email ? `Contact Email: ${booking.contact.email}` : null,

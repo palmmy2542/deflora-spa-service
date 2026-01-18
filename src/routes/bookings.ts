@@ -25,6 +25,14 @@ import {
   BookingUpdateDetailsSchema,
   QuickReservationCreateSchema,
 } from "../validators/schemas.js";
+import {
+  selectEmailTemplate,
+  determineBookingType,
+  buildEmailInputData,
+  getRecipientEmail,
+  BookingStatus,
+  BookingType as EmailBookingType,
+} from "../services/emailTemplates/index.js";
 
 const router = Router();
 const col = db.collection(config.collection.bookings);
@@ -133,37 +141,31 @@ router.post("/", async (req: any, res, next) => {
     });
 
     const snap = await doc.get();
+
+    // Send email notification for standard booking
     try {
-      if (!config.sendgrid.templates.bookingPending) {
-        console.error("Booking pending template not configured");
-        return;
-      }
-      await sendTemplatedEmail({
-        templateId: config.sendgrid.templates.bookingPending,
-        data: {
-          booking: {
-            dateTime: formatDateForEmail(body.arrivalAt),
-          },
-          emailTitle: "Booking Pending",
-          guests: body.items.map((it) => ({
-            name: it.personName,
-            treatments: [
-              ...it.programs.map((p) => ({
-                name: p.nameSnapshot ?? "None",
-                duration: `${p.durationSnapshot} minutes`,
-              })),
-              ...it.packages.map((p) => ({
-                name: p.nameSnapshot ?? "None",
-                duration: `${p.durationSnapshot} minutes`,
-              })),
-            ],
-          })),
+      const bookingType = EmailBookingType.STANDARD;
+      const template = selectEmailTemplate(bookingType, BookingStatus.PENDING);
+      const emailData = buildEmailInputData(
+        {
+          ...snap.data(),
+          arrivalAt: body.arrivalAt,
+          contact: body.contact,
+          status: "pending",
+          items: body.items,
         },
+        bookingType,
+        BookingStatus.PENDING,
+      );
+
+      await sendTemplatedEmail({
+        templateId: template.templateId!,
+        data: emailData,
         to: body.contact.email,
-        subject: "Booking Pending",
+        subject: template.subject,
       });
     } catch (e) {
-      console.error(`Error sending email ${e}`);
+      console.error(`Error sending email: ${e}`);
     }
 
     res.status(201).json({ id: doc.id, ...snap.data() });
@@ -228,30 +230,31 @@ router.post("/quick", async (req: any, res, next) => {
       console.error(`Error creating calendar event ${e}`);
     }
 
-    // Send email notification
+    // Send email notification for quick reservation
     try {
-      if (!config.sendgrid.templates.quickReservationPending) {
-        console.error("Quick reservation pending template not configured");
-      } else {
-        await sendTemplatedEmail({
-          templateId: config.sendgrid.templates.quickReservationPending,
-          data: {
-            booking: {
-              dateTime: formatDateForEmail(body.arrivalAt),
-            },
-            emailTitle: "Quick Reservation - Awaiting Details",
-            guests: [
-              {
-                name: body.name,
-              },
-            ],
-          },
-          to: body.email,
-          subject: "Quick Reservation Received",
-        });
-      }
+      const bookingType = EmailBookingType.QUICK;
+      const template = selectEmailTemplate(bookingType, BookingStatus.PENDING);
+      const emailData = buildEmailInputData(
+        {
+          ...snap.data(),
+          arrivalAt: body.arrivalAt,
+          name: body.name,
+          contact: { name: body.name, email: body.email },
+          status: "pending",
+          partySize: body.numberOfPeople,
+        },
+        bookingType,
+        BookingStatus.PENDING,
+      );
+
+      await sendTemplatedEmail({
+        templateId: template.templateId!,
+        data: emailData,
+        to: body.email,
+        subject: template.subject,
+      });
     } catch (e) {
-      console.error(`Error sending email ${e}`);
+      console.error(`Error sending email: ${e}`);
     }
 
     res.status(201).json({ id: doc.id, ...snap.data() });
@@ -688,43 +691,28 @@ router.post("/:id/confirm", authenticate, async (req: any, res, next) => {
       console.error(`Error upsertBookingEvent: ${e}`);
     }
 
+    // Send confirmation email
     try {
-      if (!config.sendgrid.templates.bookingConfirmed) {
-        console.error("Booking confirmed template not configured");
-        return;
-      }
+      const bookingType = determineBookingType(data);
+      const template = selectEmailTemplate(
+        bookingType,
+        BookingStatus.CONFIRMED,
+      );
+      const emailData = buildEmailInputData(
+        data,
+        bookingType,
+        BookingStatus.CONFIRMED,
+      );
+      const recipientEmail = getRecipientEmail(data);
+
       await sendTemplatedEmail({
-        templateId: config.sendgrid.templates.bookingConfirmed,
-        data: {
-          booking: {
-            dateTime: formatDateForEmail(data.arrivalAt.toDate()),
-          },
-          emailTitle: "Booking Confirmed",
-          guests: data.items.map(
-            (it: { personName: any; programs: any[]; packages: any[] }) => ({
-              name: it.personName,
-              treatments: [
-                ...it.programs.map(
-                  (p: { nameSnapshot: any; durationSnapshot: any }) => ({
-                    name: p.nameSnapshot ?? "None",
-                    duration: `${p.durationSnapshot} minutes`,
-                  }),
-                ),
-                ...it.packages.map(
-                  (p: { nameSnapshot: any; durationSnapshot: any }) => ({
-                    name: p.nameSnapshot ?? "None",
-                    duration: `${p.durationSnapshot} minutes`,
-                  }),
-                ),
-              ],
-            }),
-          ),
-        },
-        to: data.contact.email,
-        subject: "Booking Confirmed",
+        templateId: template.templateId!,
+        data: emailData,
+        to: recipientEmail,
+        subject: template.subject,
       });
     } catch (e) {
-      console.error(`Error sending email ${e}`);
+      console.error(`Error sending email: ${e}`);
     }
 
     res.json({ id: fresh.id, ...fresh.data() });
@@ -755,24 +743,25 @@ router.post("/:id/cancel", authenticate, async (req: any, res, next) => {
       console.error(`Error deleteBookingEvent: ${e}`);
     }
 
+    // Send cancellation email
     try {
-      if (!config.sendgrid.templates.bookingCanceled) {
-        console.error("Booking canceled template not configured");
-        return;
-      }
+      const bookingType = determineBookingType(data);
+      const template = selectEmailTemplate(bookingType, BookingStatus.CANCELED);
+      const emailData = buildEmailInputData(
+        data,
+        bookingType,
+        BookingStatus.CANCELED,
+      );
+      const recipientEmail = getRecipientEmail(data);
+
       await sendTemplatedEmail({
-        templateId: config.sendgrid.templates.bookingCanceled,
-        data: {
-          booking: {
-            dateTime: formatDateForEmail(data.arrivalAt.toDate()),
-          },
-          emailTitle: "Booking Canceled",
-        },
-        to: data.contact.email,
-        subject: "Booking Canceled",
+        templateId: template.templateId!,
+        data: emailData,
+        to: recipientEmail,
+        subject: template.subject,
       });
     } catch (e) {
-      console.error(`Error sending email ${e}`);
+      console.error(`Error sending email: ${e}`);
     }
 
     res.json({ id: fresh.id, ...fresh.data() });
@@ -796,43 +785,28 @@ router.post(
         console.error(`Error upsertBookingEvent: ${e}`);
       }
 
+      // Resend confirmation email
       try {
-        if (!config.sendgrid.templates.bookingConfirmed) {
-          console.error("Booking confirmed template not configured");
-          return;
-        }
+        const bookingType = determineBookingType(data);
+        const template = selectEmailTemplate(
+          bookingType,
+          BookingStatus.CONFIRMED,
+        );
+        const emailData = buildEmailInputData(
+          data,
+          bookingType,
+          BookingStatus.CONFIRMED,
+        );
+        const recipientEmail = getRecipientEmail(data);
+
         await sendTemplatedEmail({
-          templateId: config.sendgrid.templates.bookingConfirmed,
-          data: {
-            booking: {
-              dateTime: formatDateForEmail(data.arrivalAt.toDate()),
-            },
-            emailTitle: "Booking Confirmed",
-            guests: data.items.map(
-              (it: { personName: any; programs: any[]; packages: any[] }) => ({
-                name: it.personName,
-                treatments: [
-                  ...it.programs.map(
-                    (p: { nameSnapshot: any; durationSnapshot: any }) => ({
-                      name: p.nameSnapshot ?? "None",
-                      duration: `${p.durationSnapshot} minutes`,
-                    }),
-                  ),
-                  ...it.packages.map(
-                    (p: { nameSnapshot: any; durationSnapshot: any }) => ({
-                      name: p.nameSnapshot ?? "None",
-                      duration: `${p.durationSnapshot} minutes`,
-                    }),
-                  ),
-                ],
-              }),
-            ),
-          },
-          to: data.contact.email,
-          subject: "Booking Confirmed",
+          templateId: template.templateId!,
+          data: emailData,
+          to: recipientEmail,
+          subject: template.subject,
         });
       } catch (e) {
-        console.error(`Error sending email ${e}`);
+        console.error(`Error sending email: ${e}`);
       }
 
       res.json({ id: fresh.id, ...fresh.data() });
