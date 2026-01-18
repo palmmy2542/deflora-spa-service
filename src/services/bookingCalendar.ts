@@ -76,6 +76,7 @@ export async function upsertBookingEvent(
     }),
     `[Booking details](${config.backofficeURL}/bookings/${booking.id})`,
   ]
+    .flat()
     .filter(Boolean) // remove null/empty
     .join("\n\n");
 
@@ -163,4 +164,68 @@ export async function deleteBookingEvent(
   });
 
   console.log("deleteBookingEvent success");
+}
+
+/**
+ * Create calendar event for quick reservations (simplified flow)
+ * Uses a default 2-hour duration and simplified description
+ */
+export async function createQuickReservationEvent(
+  bookingRef: FirebaseFirestore.DocumentReference,
+  booking: {
+    id: string;
+    contact?: { name?: string; email?: string };
+    partySize: number;
+    arrivalAt: FirebaseFirestore.Timestamp | { toDate: () => Date };
+  }
+) {
+  if (!CALENDAR_ID) throw new Error("CALENDAR_ID is not set");
+
+  const start = toISOUTC(booking.arrivalAt);
+  const endISO = new Date(
+    new Date(start).getTime() + 2 * 60 * 60 * 1000
+  ).toISOString(); // 2 hours default
+
+  const title = `${booking.contact?.name ?? "Guest"} x ${
+    booking.partySize
+  } person`;
+  const description = [
+    `Booking ID: ${booking.id}`,
+    booking.contact?.email ? `Contact Email: ${booking.contact.email}` : null,
+    "Quick reservation - awaiting details",
+    `[Booking details](${config.backofficeURL}/bookings/${booking.id})`,
+  ]
+    .filter(Boolean) // remove null/empty
+    .join("\n\n");
+
+  const event = {
+    summary: title,
+    description,
+    start: { dateTime: start, timeZone: TZ },
+    end: { dateTime: endISO, timeZone: TZ },
+    reminders: {
+      useDefault: false,
+      overrides: [
+        { method: "email", minutes: 24 * 60 }, // 24h before
+        { method: "popup", minutes: 60 }, // 1h before
+      ],
+    },
+  };
+
+  const created = await calendar.events.insert({
+    calendarId: CALENDAR_ID,
+    requestBody: event,
+    sendUpdates: "all",
+  });
+
+  const saved = created.data;
+  await bookingRef.update({
+    calendarEventId: saved.id,
+    calendarHtmlLink: saved.htmlLink,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+
+  console.log("createQuickReservationEvent success");
+
+  return saved;
 }

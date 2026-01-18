@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+/** ===== Booking Type ===== */
+export enum BookingType {
+  NORMAL = "NORMAL",
+  QUICK = "QUICK",
+}
+
 /** ===== Programs (with default + options) ===== */
 export const ProgramSchema = z.object({
   name: z.string().min(1),
@@ -10,7 +16,7 @@ export const ProgramSchema = z.object({
       z.object({
         durationMinutes: z.number().int().positive(),
         price: z.number().nonnegative(),
-      })
+      }),
     )
     .min(1),
   currency: z.string().default("THB"),
@@ -99,6 +105,18 @@ export type BookingProgramSelectionInput = z.infer<
 >;
 export type BookingPackageSelectionInput = z.infer<
   typeof BookingPackageSelectionSchema
+>;
+
+/** ===== Quick Reservation (simplified flow) ===== */
+export const QuickReservationCreateSchema = z.object({
+  arrivalAt: z.string().datetime(),
+  name: z.string().min(1),
+  email: z.string().email(),
+  numberOfPeople: z.number().int().positive(),
+});
+
+export type QuickReservationCreateInput = z.infer<
+  typeof QuickReservationCreateSchema
 >;
 
 /** ===== Analytics (unchanged) ===== */

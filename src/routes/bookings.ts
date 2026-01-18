@@ -5,6 +5,7 @@ import { config } from "../config/config.js";
 import { db, FieldValue, Timestamp } from "../config/firebase.js";
 import { authenticate } from "../middleware/auth.js";
 import {
+  createQuickReservationEvent,
   deleteBookingEvent,
   upsertBookingEvent,
 } from "../services/bookingCalendar.js";
@@ -20,7 +21,9 @@ import {
   BookingCreateSchema,
   BookingPackageSelectionSchema,
   BookingProgramSelectionSchema,
+  BookingType,
   BookingUpdateDetailsSchema,
+  QuickReservationCreateSchema,
 } from "../validators/schemas.js";
 
 const router = Router();
@@ -42,10 +45,10 @@ function assertTransition(from: string, to: string) {
 
 function mapItemProgramToSnapshot(
   item: z.infer<typeof BookingProgramSelectionSchema>,
-  program: ProgramDoc
+  program: ProgramDoc,
 ) {
   const durationOption = program.durationOptions.find(
-    (d) => d.durationMinutes === item.durationSnapshot
+    (d) => d.durationMinutes === item.durationSnapshot,
   );
   if (!durationOption) {
     const e: any = new Error(`Duration not found: ${item.durationSnapshot}`);
@@ -65,7 +68,7 @@ function mapItemProgramToSnapshot(
 
 function mapItemPackageToSnapshot(
   item: z.infer<typeof BookingPackageSelectionSchema>,
-  pkg: PackageDoc
+  pkg: PackageDoc,
 ) {
   return {
     packageId: item.packageId,
@@ -116,6 +119,7 @@ router.post("/", async (req: any, res, next) => {
 
     const totals = computeTotals(snapshotItems);
     const doc = await col.add({
+      type: BookingType.NORMAL,
       status: "pending",
       arrivalAt: Timestamp.fromDate(new Date(body.arrivalAt)),
       contact: body.contact,
@@ -158,6 +162,95 @@ router.post("/", async (req: any, res, next) => {
         to: body.contact.email,
         subject: "Booking Pending",
       });
+    } catch (e) {
+      console.error(`Error sending email ${e}`);
+    }
+
+    res.status(201).json({ id: doc.id, ...snap.data() });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/**
+ * POST /api/v1/bookings/quick
+ * Create a quick reservation with minimal information
+ *
+ * Request body:
+ * - name: string (required)
+ * - email: string (email format, required)
+ * - numberOfPeople: number (positive integer, required)
+ * - arrivalAt: string (datetime format, required)
+ *
+ * Response: Created booking document with default values
+ */
+router.post("/quick", async (req: any, res, next) => {
+  try {
+    // Validate request body
+    const body = QuickReservationCreateSchema.parse(req.body);
+
+    // Create document with default values
+    const doc = await col.add({
+      type: BookingType.QUICK,
+      status: "pending",
+      arrivalAt: Timestamp.fromDate(new Date(body.arrivalAt)),
+      contact: {
+        name: body.name,
+        email: body.email,
+        phone: "",
+      },
+      items: [],
+      note: "Quick reservation - awaiting details",
+      partySize: body.numberOfPeople,
+      totals: {
+        price: 0,
+        currency: "THB",
+      },
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+      createdBy: null,
+    });
+
+    const snap = await doc.get();
+
+    // Create calendar event for quick reservation
+    try {
+      await createQuickReservationEvent(doc, {
+        id: doc.id,
+        contact: {
+          name: body.name,
+          email: body.email,
+        },
+        partySize: body.numberOfPeople,
+        arrivalAt: Timestamp.fromDate(new Date(body.arrivalAt)),
+      });
+    } catch (e) {
+      console.error(`Error creating calendar event ${e}`);
+    }
+
+    // Send email notification
+    try {
+      if (!config.sendgrid.templates.quickReservationPending) {
+        console.error("Quick reservation pending template not configured");
+      } else {
+        await sendTemplatedEmail({
+          templateId: config.sendgrid.templates.quickReservationPending,
+          data: {
+            booking: {
+              dateTime: formatDateForEmail(body.arrivalAt),
+            },
+            emailTitle: "Quick Reservation - Awaiting Details",
+            guests: [
+              {
+                name: body.name,
+                numberOfPeople: body.numberOfPeople,
+              },
+            ],
+          },
+          to: body.email,
+          subject: "Quick Reservation Received",
+        });
+      }
     } catch (e) {
       console.error(`Error sending email ${e}`);
     }
@@ -254,7 +347,7 @@ function serializePivotValue(v: any) {
 /** Which pivot indices are timestamps for a given query plan */
 function timestampPivotIndexes(
   appliedRangeField: "searchKey" | "createdAt" | null,
-  sortBy: string
+  sortBy: string,
 ) {
   // order chain we build:
   // [rangeField?] -> [sortBy if different?] -> [__name__]
@@ -347,7 +440,7 @@ router.get("/", authenticate, async (req, res, next) => {
     if (appliedRangeField === "searchKey") {
       qref = qref.orderBy(
         "searchKey",
-        sortDir as FirebaseFirestore.OrderByDirection
+        sortDir as FirebaseFirestore.OrderByDirection,
       );
       if (sortBy !== "searchKey") qref = qref.orderBy(sortBy, sortDir as any);
     } else if (appliedRangeField === "createdAt") {
@@ -370,7 +463,7 @@ router.get("/", authenticate, async (req, res, next) => {
     if (pageToken) {
       try {
         const cursor = decodeToken<{ pivot: unknown[]; v?: number }>(
-          String(pageToken)
+          String(pageToken),
         );
 
         if (!cursor || !Array.isArray(cursor.pivot)) {
@@ -390,7 +483,7 @@ router.get("/", authenticate, async (req, res, next) => {
         // revive timestamp pivots
         const tsIdxs = timestampPivotIndexes(appliedRangeField, sortBy);
         const pivot = cursor.pivot.map((v, i) =>
-          tsIdxs.includes(i) ? reviveToTimestamp(v) : v
+          tsIdxs.includes(i) ? reviveToTimestamp(v) : v,
         );
 
         qref = qref.startAfter(...pivot);
@@ -616,16 +709,16 @@ router.post("/:id/confirm", authenticate, async (req: any, res, next) => {
                   (p: { nameSnapshot: any; durationSnapshot: any }) => ({
                     name: p.nameSnapshot ?? "None",
                     duration: `${p.durationSnapshot} minutes`,
-                  })
+                  }),
                 ),
                 ...it.packages.map(
                   (p: { nameSnapshot: any; durationSnapshot: any }) => ({
                     name: p.nameSnapshot ?? "None",
                     duration: `${p.durationSnapshot} minutes`,
-                  })
+                  }),
                 ),
               ],
-            })
+            }),
           ),
         },
         to: data.contact.email,
@@ -724,16 +817,16 @@ router.post(
                     (p: { nameSnapshot: any; durationSnapshot: any }) => ({
                       name: p.nameSnapshot ?? "None",
                       duration: `${p.durationSnapshot} minutes`,
-                    })
+                    }),
                   ),
                   ...it.packages.map(
                     (p: { nameSnapshot: any; durationSnapshot: any }) => ({
                       name: p.nameSnapshot ?? "None",
                       duration: `${p.durationSnapshot} minutes`,
-                    })
+                    }),
                   ),
                 ],
-              })
+              }),
             ),
           },
           to: data.contact.email,
@@ -747,7 +840,7 @@ router.post(
     } catch (e) {
       next(e);
     }
-  }
+  },
 );
 
 export default router;

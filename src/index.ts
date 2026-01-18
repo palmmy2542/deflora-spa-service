@@ -13,6 +13,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use("/api/v1/programs", programsRouter);
 app.use("/api/v1/packages", packagesRouter);
+
 app.use("/api/v1/bookings", bookingsRouter);
 app.listen(config.port, () => {
   console.log(`Listening on http://localhost:${config.port.toString()}`);
