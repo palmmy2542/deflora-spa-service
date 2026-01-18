@@ -243,7 +243,6 @@ router.post("/quick", async (req: any, res, next) => {
             guests: [
               {
                 name: body.name,
-                numberOfPeople: body.numberOfPeople,
               },
             ],
           },
