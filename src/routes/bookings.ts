@@ -654,15 +654,14 @@ router.patch("/:id", authenticate, async (req: any, res, next) => {
         updatedAt: FieldValue.serverTimestamp(),
       });
     });
-
-    try {
+    const data = (await ref.get()) as any;
+    if (data.type === BookingType.NORMAL) {
       await upsertBookingEvent(ref);
-    } catch (e) {
-      console.error(`Error upsertBookingEvent: ${e}`);
+    } else {
+      await createQuickReservationEvent(ref, data);
     }
 
-    const fresh = await ref.get();
-    res.json({ id: fresh.id, ...fresh.data() });
+    res.json({ id: data.id, ...data.data() });
   } catch (e) {
     next(e);
   }
@@ -684,9 +683,14 @@ router.post("/:id/confirm", authenticate, async (req: any, res, next) => {
 
     const fresh = await ref.get();
     const data = fresh.data() as any;
+    console.log(ref);
 
     try {
-      await upsertBookingEvent(ref);
+      if (data.type === BookingType.NORMAL) {
+        await upsertBookingEvent(ref);
+      } else {
+        await createQuickReservationEvent(ref, data);
+      }
     } catch (e) {
       console.error(`Error upsertBookingEvent: ${e}`);
     }
@@ -780,7 +784,11 @@ router.post(
       const data = fresh.data() as any;
 
       try {
-        await upsertBookingEvent(ref);
+        if (data.type === BookingType.NORMAL) {
+          await upsertBookingEvent(ref);
+        } else {
+          await createQuickReservationEvent(ref, data);
+        }
       } catch (e) {
         console.error(`Error upsertBookingEvent: ${e}`);
       }

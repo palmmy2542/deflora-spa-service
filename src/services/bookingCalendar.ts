@@ -184,19 +184,30 @@ export async function createQuickReservationEvent(
 ) {
   if (!CALENDAR_ID) throw new Error("CALENDAR_ID is not set");
 
-  const start = toISOUTC(booking.arrivalAt);
+  const snap = await bookingRef.get();
+  if (!snap.exists) throw new Error("Booking not found");
+  const bookingData = {
+    id: snap.id,
+    ...snap.data(),
+  } as unknown as BookingDoc & {
+    calendarEventId?: string;
+  };
+
+  const start = toISOUTC(bookingData.arrivalAt);
   const endISO = new Date(
     new Date(start).getTime() + 2 * 60 * 60 * 1000,
   ).toISOString(); // 2 hours default
 
-  const title = `${booking.contact?.name ?? "Guest"} x ${
-    booking.partySize
+  const title = `${bookingData.contact?.name ?? "Guest"} x ${
+    bookingData.partySize
   } person (Quick)`;
   const description = [
-    `Booking ID: ${booking.id}`,
-    booking.contact?.email ? `Contact Email: ${booking.contact.email}` : null,
+    `Booking ID: ${bookingData.id}`,
+    bookingData.contact?.email
+      ? `Contact Email: ${bookingData.contact.email}`
+      : null,
     "Quick reservation - awaiting details",
-    `[Booking details](${config.backofficeURL}/bookings/${booking.id})`,
+    `[Booking details](${config.backofficeURL}/bookings/${bookingData.id})`,
   ]
     .filter(Boolean) // remove null/empty
     .join("\n\n");
@@ -215,13 +226,37 @@ export async function createQuickReservationEvent(
     },
   };
 
-  const created = await calendar.events.insert({
-    calendarId: CALENDAR_ID,
-    requestBody: event,
-    sendUpdates: "all",
-  });
+  let createdOrUpdated;
+  try {
+    if (bookingData["calendarEventId"]) {
+      // Update existing event to keep data in sync
+      createdOrUpdated = await calendar.events.update({
+        calendarId: CALENDAR_ID,
+        eventId: bookingData["calendarEventId"],
+        requestBody: event,
+        sendUpdates: "all",
+      });
+    } else {
+      createdOrUpdated = await calendar.events.insert({
+        calendarId: CALENDAR_ID,
+        requestBody: event,
+        sendUpdates: "all",
+      });
+    }
+  } catch (e: any) {
+    // If update fails because the event was deleted manually, try insert once
+    if (bookingData["calendarEventId"]) {
+      createdOrUpdated = await calendar.events.insert({
+        calendarId: CALENDAR_ID,
+        requestBody: event,
+        sendUpdates: "all",
+      });
+    } else {
+      throw e;
+    }
+  }
 
-  const saved = created.data;
+  const saved = createdOrUpdated.data;
   await bookingRef.update({
     calendarEventId: saved.id,
     calendarHtmlLink: saved.htmlLink,
