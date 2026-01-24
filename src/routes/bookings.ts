@@ -683,7 +683,6 @@ router.post("/:id/confirm", authenticate, async (req: any, res, next) => {
 
     const fresh = await ref.get();
     const data = fresh.data() as any;
-    console.log(ref);
 
     try {
       if (data.type === BookingType.NORMAL) {
