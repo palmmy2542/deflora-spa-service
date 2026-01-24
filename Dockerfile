@@ -1,29 +1,21 @@
-# Stage 1: Build
+# ---------- Stage 1: Build ----------
 FROM node:22 AS builder
 WORKDIR /usr/src/app
 
-# Install dependencies
-COPY package*.json ./
+COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
 
-# Copy source
 COPY . .
+RUN yarn build   # tsc อยู่ตรงนี้แน่นอน
 
-# Build TypeScript -> dist/
-RUN yarn build   # this should run tsc
-
-# Stage 2: Runtime
+# ---------- Stage 2: Runtime ----------
 FROM node:22
 WORKDIR /usr/src/app
 
-# Copy only necessary files from builder
-COPY --from=builder /usr/src/app/package*.json ./
+COPY --from=builder /usr/src/app/package.json ./
+COPY --from=builder /usr/src/app/node_modules ./node_modules
 COPY --from=builder /usr/src/app/dist ./dist
 
-RUN yarn install --production --frozen-lockfile
-
-# Expose Cloud Run port
+ENV NODE_ENV=production
 EXPOSE 8080
-
-# Start app
 CMD ["node", "dist/index.js"]
